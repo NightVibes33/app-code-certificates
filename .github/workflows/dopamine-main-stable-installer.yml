@@ -10,7 +10,6 @@ on:
       - main
     paths:
       - ".github/workflows/dopamine-main-stable-installer.yml"
-      - "dopamine/**"
       - "tools/build_dopamine_site.py"
       - "tools/dopamine_registration_server.py"
 
@@ -58,13 +57,15 @@ jobs:
           BUILD_NEEDED=false
           SERVE_NEEDED=false
 
-          if [[ "$EVENT_NAME" == "workflow_dispatch" || "$EVENT_NAME" == "push" ]]; then
+          if [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
             BUILD_NEEDED=true
           elif [[ -z "$PUBLISHED_SHA" || "$SOURCE_SHA" != "$PUBLISHED_SHA" ]]; then
             BUILD_NEEDED=true
           elif [[ -z "$ARTIFACT_RUN_ID" ]]; then
             BUILD_NEEDED=true
           elif [[ "$EVENT_SCHEDULE" == "7 */4 * * *" ]]; then
+            BUILD_NEEDED=true
+          elif [[ "$EVENT_NAME" == "push" ]]; then
             SERVE_NEEDED=true
           fi
 
@@ -202,7 +203,7 @@ jobs:
 
           security cms -D -i signing-work/profile.mobileprovision > signing-work/profile.plist
           python3 - <<'PY'
-          import json, plistlib
+          import plistlib
           from pathlib import Path
           profile = plistlib.loads(Path('signing-work/profile.plist').read_bytes())
           entitlements = profile['Entitlements']
@@ -301,7 +302,10 @@ jobs:
         shell: bash
         run: |
           set -euxo pipefail
-          python3 -m pip install --user PyJWT cryptography
+          python3 -m venv registration-venv
+          registration-venv/bin/python -m pip install --upgrade pip
+          registration-venv/bin/python -m pip install PyJWT cryptography
+          echo "REGISTRATION_PYTHON=$GITHUB_WORKSPACE/registration-venv/bin/python" >> "$GITHUB_ENV"
           mkdir -p registration-signing site/complete
           cp output/Dopamine-iPad5-newest-signed.ipa registration-signing/base.ipa
           python3 - <<'PY'
@@ -340,7 +344,7 @@ jobs:
           VERSION="$(jq -r .version output/metadata.json)"
           TITLE="$(jq -r .title output/metadata.json)"
 
-          RUNNER_TRACKING_ID="" nohup python3 tools/dopamine_registration_server.py \
+          RUNNER_TRACKING_ID="" nohup "$REGISTRATION_PYTHON" tools/dopamine_registration_server.py \
             --site site/complete \
             --base-ipa registration-signing/base.ipa \
             --bundle-id "$BUNDLE_ID" \
