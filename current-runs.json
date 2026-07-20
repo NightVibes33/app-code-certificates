@@ -1,9 +1,59 @@
 [
   {
-    "id": 29760731778,
+    "id": 29761501851,
     "name": "Current runs probe",
     "status": "in_progress",
     "conclusion": null,
+    "head_sha": "10cf1c9f602e4b2d361b54e66371055f428a3996",
+    "event": "push",
+    "created_at": "2026-07-20T16:53:28Z",
+    "html_url": "https://github.com/NightVibes33/app-code-certificates/actions/runs/29761501851"
+  },
+  {
+    "id": 29761489505,
+    "name": "Fast restored Cloudflare installer",
+    "status": "in_progress",
+    "conclusion": null,
+    "head_sha": "da27123ef4e7481f17f8e6a60dbad0feaa8057de",
+    "event": "push",
+    "created_at": "2026-07-20T16:53:17Z",
+    "html_url": "https://github.com/NightVibes33/app-code-certificates/actions/runs/29761489505"
+  },
+  {
+    "id": 29760882608,
+    "name": "Extract Cloudflare installer URL",
+    "status": "in_progress",
+    "conclusion": null,
+    "head_sha": "c34b7501d4be069d4d5645c35c601b1c9e63404a",
+    "event": "push",
+    "created_at": "2026-07-20T16:44:29Z",
+    "html_url": "https://github.com/NightVibes33/app-code-certificates/actions/runs/29760882608"
+  },
+  {
+    "id": 29760782823,
+    "name": "Cancel stale installer run",
+    "status": "completed",
+    "conclusion": "success",
+    "head_sha": "0cf82a50b6879ef3eb0d23cb6f141d92200c4d89",
+    "event": "push",
+    "created_at": "2026-07-20T16:43:06Z",
+    "html_url": "https://github.com/NightVibes33/app-code-certificates/actions/runs/29760782823"
+  },
+  {
+    "id": 29760768546,
+    "name": "Cancel obsolete installer build",
+    "status": "completed",
+    "conclusion": "success",
+    "head_sha": "9ac6bf0e40fd09e511450719dd5c7d3838ec685d",
+    "event": "push",
+    "created_at": "2026-07-20T16:42:54Z",
+    "html_url": "https://github.com/NightVibes33/app-code-certificates/actions/runs/29760768546"
+  },
+  {
+    "id": 29760731778,
+    "name": "Current runs probe",
+    "status": "completed",
+    "conclusion": "success",
     "head_sha": "38107ea2c5396493ea3b8d3b327f4d2e331b4501",
     "event": "push",
     "created_at": "2026-07-20T16:42:21Z",
@@ -22,7 +72,7 @@
   {
     "id": 29760648007,
     "name": "Dopamine permanent installer",
-    "status": "pending",
+    "status": "in_progress",
     "conclusion": null,
     "head_sha": "4bbab7eb970915c55f52d47e25f855c92d248343",
     "event": "push",
@@ -62,8 +112,8 @@
   {
     "id": 29760371973,
     "name": "Dopamine permanent installer",
-    "status": "in_progress",
-    "conclusion": null,
+    "status": "completed",
+    "conclusion": "cancelled",
     "head_sha": "3dd9e710d359f247361897e5dc6530da60e6b64f",
     "event": "push",
     "created_at": "2026-07-20T16:37:08Z",
