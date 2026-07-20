@@ -1,0 +1,160 @@
+2026-07-20T16:53:30.6762120Z [36;1mPath('signing-work/development.p12').write_bytes([0m
+2026-07-20T16:53:30.6762750Z [36;1m    base64.b64decode(clean(Path('dopamine/Dopamine-Development.p12.b64').read_text()), validate=True)[0m
+2026-07-20T16:53:30.6763440Z [36;1m)[0m
+2026-07-20T16:53:30.6763780Z [36;1mparts = sorted(Path('dopamine/profile.parts').glob('*'))[0m
+2026-07-20T16:53:30.6764110Z [36;1mif not parts:[0m
+2026-07-20T16:53:30.6764660Z [36;1m    raise SystemExit('Provisioning profile chunks are missing')[0m
+2026-07-20T16:53:30.6765120Z [36;1mprofile_b64 = ''.join(''.join(part.read_text().split()) for part in parts)[0m
+2026-07-20T16:53:30.6765670Z [36;1mPath('signing-work/profile.mobileprovision').write_bytes([0m
+2026-07-20T16:53:30.6766120Z [36;1m    base64.b64decode(clean(profile_b64), validate=True)[0m
+2026-07-20T16:53:30.6766530Z [36;1m)[0m
+2026-07-20T16:53:30.6766730Z [36;1mPY[0m
+2026-07-20T16:53:30.6766990Z [36;1m[0m
+2026-07-20T16:53:30.6767460Z [36;1msecurity cms -D -i signing-work/profile.mobileprovision > signing-work/profile.plist[0m
+2026-07-20T16:53:30.6767990Z [36;1mpython3 - <<'PY'[0m
+2026-07-20T16:53:30.6768250Z [36;1mimport os, plistlib[0m
+2026-07-20T16:53:30.6768570Z [36;1mfrom pathlib import Path[0m
+2026-07-20T16:53:30.6768980Z [36;1mprofile = plistlib.loads(Path('signing-work/profile.plist').read_bytes())[0m
+2026-07-20T16:53:30.6769460Z [36;1mentitlements = profile['Entitlements'][0m
+2026-07-20T16:53:30.6769850Z [36;1mbundle_id = entitlements['application-identifier'].split('.', 1)[1][0m
+2026-07-20T16:53:30.6770360Z [36;1mPath('signing-work/entitlements.plist').write_bytes([0m
+2026-07-20T16:53:30.6771400Z [36;1m    plistlib.dumps(entitlements, fmt=plistlib.FMT_XML, sort_keys=False)[0m
+2026-07-20T16:53:30.6771840Z [36;1m)[0m
+2026-07-20T16:53:30.6772090Z [36;1mwith open(os.environ['GITHUB_ENV'], 'a') as env:[0m
+2026-07-20T16:53:30.6772620Z [36;1m    env.write(f'BUNDLE_ID={bundle_id}\n')[0m
+2026-07-20T16:53:30.6772900Z [36;1mPY[0m
+2026-07-20T16:53:30.6773170Z [36;1m[0m
+2026-07-20T16:53:30.6773450Z [36;1mKEYCHAIN="$RUNNER_TEMP/dopamine-fast-signing.keychain-db"[0m
+2026-07-20T16:53:30.6774430Z [36;1mKEYCHAIN_PASSWORD="$(python3 -c 'import secrets; print(secrets.token_urlsafe(24))')"[0m
+2026-07-20T16:53:30.6774930Z [36;1msecurity create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"[0m
+2026-07-20T16:53:30.6775410Z [36;1msecurity set-keychain-settings -lut 7200 "$KEYCHAIN"[0m
+2026-07-20T16:53:30.6775820Z [36;1msecurity unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"[0m
+2026-07-20T16:53:30.6776450Z [36;1msecurity import signing-work/development.p12 -k "$KEYCHAIN" -P "$P12_PASSWORD" -T /usr/bin/codesign[0m
+2026-07-20T16:53:30.6777090Z [36;1msecurity set-key-partition-list -S apple-tool:,apple: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN"[0m
+2026-07-20T16:53:30.6777930Z [36;1mIDENTITY="$(security find-identity -v -p codesigning "$KEYCHAIN" | awk '/^[[:space:]]*[0-9]+\)/ {print $2; exit}')"[0m
+2026-07-20T16:53:30.6778530Z [36;1mtest -n "$IDENTITY"[0m
+2026-07-20T16:53:30.6778790Z [36;1m[0m
+2026-07-20T16:53:30.6779100Z [36;1mmkdir -p signing-work/unpacked[0m
+2026-07-20T16:53:30.6780460Z [36;1munzip -q "$UNSIGNED_IPA" -d signing-work/unpacked[0m
+2026-07-20T16:53:30.6781110Z [36;1mAPP="$(find signing-work/unpacked/Payload -maxdepth 1 -type d -name '*.app' -print -quit)"[0m
+2026-07-20T16:53:30.6781810Z [36;1mtest -n "$APP"[0m
+2026-07-20T16:53:30.6782130Z [36;1m[0m
+2026-07-20T16:53:30.6782370Z [36;1mBUILD_NUMBER="$(date -u +%Y%m%d%H%M%S)"[0m
+2026-07-20T16:53:30.6782880Z [36;1m/usr/libexec/PlistBuddy -c "Set :CFBundleIdentifier $BUNDLE_ID" "$APP/Info.plist"[0m
+2026-07-20T16:53:30.6783430Z [36;1m/usr/libexec/PlistBuddy -c "Set :CFBundleVersion $BUILD_NUMBER" "$APP/Info.plist"[0m
+2026-07-20T16:53:30.6784120Z [36;1mVERSION="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$APP/Info.plist")"[0m
+2026-07-20T16:53:30.6785400Z [36;1mcp signing-work/profile.mobileprovision "$APP/embedded.mobileprovision"[0m
+2026-07-20T16:53:30.6786520Z [36;1mfind "$APP" -type d -name _CodeSignature -prune -exec rm -rf '{}' +[0m
+2026-07-20T16:53:30.6787030Z [36;1m[0m
+2026-07-20T16:53:30.6787460Z [36;1mif [[ -d "$APP/Frameworks" ]]; then[0m
+2026-07-20T16:53:30.6787810Z [36;1m  while IFS= read -r -d '' framework; do[0m
+2026-07-20T16:53:30.6788350Z [36;1m    codesign --force --sign "$IDENTITY" --keychain "$KEYCHAIN" --timestamp=none "$framework"[0m
+2026-07-20T16:53:30.6788950Z [36;1m  done < <(find "$APP/Frameworks" -depth -type d -name '*.framework' -print0)[0m
+2026-07-20T16:53:30.6789340Z [36;1mfi[0m
+2026-07-20T16:53:30.6789640Z [36;1mwhile IFS= read -r -d '' dylib; do[0m
+2026-07-20T16:53:30.6790270Z [36;1m  codesign --force --sign "$IDENTITY" --keychain "$KEYCHAIN" --timestamp=none "$dylib"[0m
+2026-07-20T16:53:30.6790750Z [36;1mdone < <(find "$APP" -type f -name '*.dylib' -print0)[0m
+2026-07-20T16:53:30.6791220Z [36;1mwhile IFS= read -r -d '' extension; do[0m
+2026-07-20T16:53:30.6791690Z [36;1m  codesign --force --sign "$IDENTITY" --keychain "$KEYCHAIN" --timestamp=none "$extension"[0m
+2026-07-20T16:53:30.6792510Z [36;1mdone < <(find "$APP" -depth -type d -name '*.appex' -print0)[0m
+2026-07-20T16:53:30.6792850Z [36;1m[0m
+2026-07-20T16:53:30.6793260Z [36;1mcodesign --force --sign "$IDENTITY" --keychain "$KEYCHAIN" --timestamp=none \[0m
+2026-07-20T16:53:30.6793830Z [36;1m  --entitlements signing-work/entitlements.plist --generate-entitlement-der "$APP"[0m
+2026-07-20T16:53:30.6794400Z [36;1mcodesign --verify --deep --strict --verbose=2 "$APP"[0m
+2026-07-20T16:53:30.6794970Z [36;1m(cd signing-work/unpacked && zip -qry "$GITHUB_WORKSPACE/output/Dopamine-iPad5-StockBaseline-signed.ipa" Payload)[0m
+2026-07-20T16:53:30.6795530Z [36;1m[0m
+2026-07-20T16:53:30.6795790Z [36;1mpython3 - <<PY[0m
+2026-07-20T16:53:30.6796310Z [36;1mimport json[0m
+2026-07-20T16:53:30.6796540Z [36;1mfrom pathlib import Path[0m
+2026-07-20T16:53:30.6796950Z [36;1mPath('output/metadata.json').write_text(json.dumps({[0m
+2026-07-20T16:53:30.6797730Z [36;1m    'bundle_id': '$BUNDLE_ID',[0m
+2026-07-20T16:53:30.6798170Z [36;1m    'version': '$VERSION',[0m
+2026-07-20T16:53:30.6798480Z [36;1m    'build': '$BUILD_NUMBER',[0m
+2026-07-20T16:53:30.6800310Z [36;1m    'title': 'Dopamine iPad 5 StockBaseline',[0m
+2026-07-20T16:53:30.6801350Z [36;1m    'source_sha': '$SOURCE_SHA',[0m
+2026-07-20T16:53:30.6802430Z [36;1m}, indent=2) + '\n')[0m
+2026-07-20T16:53:30.6802760Z [36;1mPY[0m
+2026-07-20T16:53:30.6803060Z [36;1msecurity delete-keychain "$KEYCHAIN"[0m
+2026-07-20T16:53:30.6921150Z shell: /bin/bash --noprofile --norc -e -o pipefail {0}
+2026-07-20T16:53:30.6921710Z env:
+2026-07-20T16:53:30.6921950Z   P12_PASSWORD: 1
+2026-07-20T16:53:30.6922300Z   SOURCE_SHA: 5ea434e0f63cca7d4feb4aaecc244ac7c5ca5cfd
+2026-07-20T16:53:30.6922610Z ##[endgroup]
+2026-07-20T16:53:30.8445050Z + mkdir -p output signing-work
+2026-07-20T16:53:30.8538830Z ++ find unsigned -type f -name '*.ipa' -print -quit
+2026-07-20T16:53:30.8610740Z + UNSIGNED_IPA=unsigned/Dopamine.ipa
+2026-07-20T16:53:30.8611180Z + test -s unsigned/Dopamine.ipa
+2026-07-20T16:53:30.8611580Z + python3 -
+2026-07-20T16:53:31.1641990Z + security cms -D -i signing-work/profile.mobileprovision
+2026-07-20T16:53:31.3470770Z + python3 -
+2026-07-20T16:53:31.4832600Z + KEYCHAIN=/Users/runner/work/_temp/dopamine-fast-signing.keychain-db
+2026-07-20T16:53:31.4841290Z ++ python3 -c 'import secrets; print(secrets.token_urlsafe(24))'
+2026-07-20T16:53:31.6314760Z + KEYCHAIN_PASSWORD=d2_kJOsHfOuIF5sO7g7fPyl8MX2tN_cJ
+2026-07-20T16:53:31.6321740Z + security create-keychain -p d2_kJOsHfOuIF5sO7g7fPyl8MX2tN_cJ /Users/runner/work/_temp/dopamine-fast-signing.keychain-db
+2026-07-20T16:53:31.6632700Z + security set-keychain-settings -lut 7200 /Users/runner/work/_temp/dopamine-fast-signing.keychain-db
+2026-07-20T16:53:31.6790890Z + security unlock-keychain -p d2_kJOsHfOuIF5sO7g7fPyl8MX2tN_cJ /Users/runner/work/_temp/dopamine-fast-signing.keychain-db
+2026-07-20T16:53:31.6981690Z + security import signing-work/development.p12 -k /Users/runner/work/_temp/dopamine-fast-signing.keychain-db -P 1 -T /usr/bin/codesign
+2026-07-20T16:53:31.8216400Z 1 identity imported.
+2026-07-20T16:53:31.8217630Z + security set-key-partition-list -S apple-tool:,apple: -s -k d2_kJOsHfOuIF5sO7g7fPyl8MX2tN_cJ /Users/runner/work/_temp/dopamine-fast-signing.keychain-db
+2026-07-20T16:53:31.8444820Z keychain: "/Users/runner/work/_temp/dopamine-fast-signing.keychain-db"
+2026-07-20T16:53:31.8751870Z ++ security find-identity -v -p codesigning /Users/runner/work/_temp/dopamine-fast-signing.keychain-db
+2026-07-20T16:53:31.8752290Z version: 256
+2026-07-20T16:53:31.8758920Z ++ awk '/^[[:space:]]*[0-9]+\)/ {print $2; exit}'
+2026-07-20T16:53:31.8759180Z class: 0x00000010 
+2026-07-20T16:53:31.8760650Z attributes:
+2026-07-20T16:53:31.8760960Z     0x00000000 <uint32>=0x00000010 
+2026-07-20T16:53:31.8769640Z     0x00000001 <blob>="Dopamine Installer Development"
+2026-07-20T16:53:31.8792610Z     0x00000002 <blob>=<NULL>
+2026-07-20T16:53:31.8793090Z     0x00000003 <uint32>=0x00000001 
+2026-07-20T16:53:31.8795570Z     0x00000004 <uint32>=0x00000000 
+2026-07-20T16:53:31.8795830Z     0x00000005 <uint32>=0x00000000 
+2026-07-20T16:53:31.8796420Z     0x00000006 <blob>=0x6C888F2251FC5812219003F21B5074B0390C2A58  "l\210\217"Q\374X\022!\220\003\362\033Pt\2609\014*X"
+2026-07-20T16:53:31.8797020Z     0x00000007 <blob>=<NULL>
+2026-07-20T16:53:31.8799730Z     0x00000008 <blob>=0x7B38373139316361322D306663392D313164342D383439612D3030303530326235323132327D00  "{87191ca2-0fc9-11d4-849a-000502b52122}\000"
+2026-07-20T16:53:31.8800600Z     0x00000009 <uint32>=0x0000002A  "\000\000\000*"
+2026-07-20T16:53:31.8801000Z     0x0000000A <uint32>=0x00000800 
+2026-07-20T16:53:31.8801440Z     0x0000000B <uint32>=0x00000800 
+2026-07-20T16:53:31.8801790Z     0x0000000C <blob>=0x0000000000000000 
+2026-07-20T16:53:31.8802200Z     0x0000000D <blob>=0x0000000000000000 
+2026-07-20T16:53:31.8802550Z     0x0000000E <uint32>=0x00000001 
+2026-07-20T16:53:31.8802930Z     0x0000000F <uint32>=0x00000001 
+2026-07-20T16:53:31.8803190Z     0x00000010 <uint32>=0x00000001 
+2026-07-20T16:53:31.8803540Z     0x00000011 <uint32>=0x00000000 
+2026-07-20T16:53:31.8803870Z     0x00000012 <uint32>=0x00000001 
+2026-07-20T16:53:31.8804290Z     0x00000013 <uint32>=0x00000001 
+2026-07-20T16:53:31.8804700Z     0x00000014 <uint32>=0x00000001 
+2026-07-20T16:53:31.8804970Z     0x00000015 <uint32>=0x00000001 
+2026-07-20T16:53:31.8805240Z     0x00000016 <uint32>=0x00000001 
+2026-07-20T16:53:31.8805490Z     0x00000017 <uint32>=0x00000001 
+2026-07-20T16:53:31.8805730Z     0x00000018 <uint32>=0x00000001 
+2026-07-20T16:53:31.8806020Z     0x00000019 <uint32>=0x00000001 
+2026-07-20T16:53:31.8806430Z     0x0000001A <uint32>=0x00000001 
+2026-07-20T16:53:31.9374170Z + IDENTITY=715AA865371D37A65FA2D457BC32F159B761D33D
+2026-07-20T16:53:31.9375480Z + test -n 715AA865371D37A65FA2D457BC32F159B761D33D
+2026-07-20T16:53:31.9378910Z + mkdir -p signing-work/unpacked
+2026-07-20T16:53:31.9411590Z + unzip -q unsigned/Dopamine.ipa -d signing-work/unpacked
+2026-07-20T16:53:32.8842840Z ++ find signing-work/unpacked/Payload -maxdepth 1 -type d -name '*.app' -print -quit
+2026-07-20T16:53:32.8966250Z + APP=signing-work/unpacked/Payload/Dopamine.app
+2026-07-20T16:53:32.8967330Z + test -n signing-work/unpacked/Payload/Dopamine.app
+2026-07-20T16:53:32.8985750Z ++ date -u +%Y%m%d%H%M%S
+2026-07-20T16:53:32.9053810Z + BUILD_NUMBER=20260720165332
+2026-07-20T16:53:32.9070250Z /Users/runner/work/_temp/cf07f796-dca4-42ce-a925-4379d6fd036a.sh: line 56: BUNDLE_ID: unbound variable
+2026-07-20T16:53:32.9108580Z ##[error]Process completed with exit code 1.
+2026-07-20T16:53:32.9392750Z Node 20 is being deprecated. This workflow is running with Node 24 by default. If you need to temporarily use Node 20, you can set the ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION=true environment variable. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/
+2026-07-20T16:53:32.9395830Z Post job cleanup.
+2026-07-20T16:53:33.2727270Z [command]/opt/homebrew/bin/git version
+2026-07-20T16:53:33.3067960Z git version 2.55.0
+2026-07-20T16:53:33.3524760Z Copying '/Users/runner/.gitconfig' to '/Users/runner/work/_temp/962224f9-c45f-4f79-b89c-39813cfb13cd/.gitconfig'
+2026-07-20T16:53:33.3657670Z Temporarily overriding HOME='/Users/runner/work/_temp/962224f9-c45f-4f79-b89c-39813cfb13cd' before making global git config changes
+2026-07-20T16:53:33.3760150Z Adding repository directory to the temporary git global config as a safe directory
+2026-07-20T16:53:33.3827010Z [command]/opt/homebrew/bin/git config --global --add safe.directory /Users/runner/work/app-code-certificates/app-code-certificates
+2026-07-20T16:53:33.3872730Z [command]/opt/homebrew/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-07-20T16:53:33.3923820Z [command]/opt/homebrew/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-07-20T16:53:33.5181380Z [command]/opt/homebrew/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-07-20T16:53:33.5273600Z http.https://github.com/.extraheader
+2026-07-20T16:53:33.5321010Z [command]/opt/homebrew/bin/git config --local --unset-all http.https://github.com/.extraheader
+2026-07-20T16:53:33.5833760Z [command]/opt/homebrew/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-07-20T16:53:33.8022610Z [command]/opt/homebrew/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-07-20T16:53:33.8797010Z [command]/opt/homebrew/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-07-20T16:53:34.1209810Z Cleaning up orphan processes
+2026-07-20T16:53:34.9440600Z ##[warning]Node.js 20 is deprecated. The following actions target Node.js 20 but are being forced to run on Node.js 24: actions/checkout@v4, actions/download-artifact@v4. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/
