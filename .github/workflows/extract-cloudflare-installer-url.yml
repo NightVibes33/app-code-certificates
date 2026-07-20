@@ -1,0 +1,46 @@
+name: Extract Cloudflare installer URL
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/extract-cloudflare-installer-url.yml"
+
+permissions:
+  actions: read
+  contents: write
+
+jobs:
+  extract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Wait for installer URL artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TARGET_RUN_ID: "29760648007"
+        shell: bash
+        run: |
+          set -euo pipefail
+          ARTIFACT_ID=""
+          for _ in $(seq 1 180); do
+            ARTIFACT_ID="$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${TARGET_RUN_ID}/artifacts" --jq '.artifacts[] | select(.name == "Dopamine-iPad5-Cloudflare-Installer-URL") | .id' | head -n 1 || true)"
+            if [[ -n "$ARTIFACT_ID" ]]; then
+              break
+            fi
+            sleep 10
+          done
+          test -n "$ARTIFACT_ID"
+          mkdir -p extracted
+          gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/${ARTIFACT_ID}/zip" > installer-url.zip
+          unzip -q installer-url.zip -d extracted
+          test -s extracted/installer-url.txt
+          cp extracted/installer-url.txt cloudflare-installer-url.txt
+          cp extracted/registration-url.txt cloudflare-registration-url.txt
+          cp extracted/ipa-url.txt cloudflare-ipa-url.txt
+          cat cloudflare-installer-url.txt
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add cloudflare-installer-url.txt cloudflare-registration-url.txt cloudflare-ipa-url.txt
+          git commit -m "Record restored Cloudflare installer URL"
+          git push
