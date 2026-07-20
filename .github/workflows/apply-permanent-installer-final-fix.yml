@@ -1,0 +1,89 @@
+name: Apply permanent installer final fix
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/apply-permanent-installer-final-fix.yml"
+
+permissions:
+  actions: write
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Patch the current permanent workflow
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path('.github/workflows/dopamine-permanent-installer.yml')
+          lines = path.read_text().splitlines()
+
+          # Poll every 15 minutes; the check job skips work when the source SHA is unchanged.
+          for index, line in enumerate(lines):
+              if line.strip().startswith('- cron:'):
+                  lines[index] = '    - cron: "*/15 * * * *"'
+                  break
+          else:
+              raise SystemExit('schedule cron line not found')
+
+          # GITHUB_ENV only affects later steps. Export the parsed bundle ID in this same shell step.
+          signing_step = next(i for i, line in enumerate(lines) if 'name: Decode signing assets and sign IPA' in line)
+          keychain_line = next(i for i in range(signing_step, len(lines)) if lines[i].strip().startswith('KEYCHAIN='))
+          already_fixed = any('profile-data.json' in line and 'BUNDLE_ID=' in line for line in lines[signing_step:keychain_line])
+          if not already_fixed:
+              lines[keychain_line:keychain_line] = [
+                  '          BUNDLE_ID="$(python3 -c \'import json; print(json.load(open("signing-work/profile-data.json"))["bundle_id"])\')"',
+                  '          export BUNDLE_ID',
+                  '',
+              ]
+
+          # GitHub Pages is the permanent host. Remove the finite TryCloudflare runner job.
+          if '  tunnel:' in lines:
+              tunnel_start = lines.index('  tunnel:')
+              publish_start = next(i for i in range(tunnel_start + 1, len(lines)) if lines[i] == '  publish:')
+              del lines[tunnel_start:publish_start]
+
+          path.write_text('\n'.join(lines) + '\n')
+          PY
+
+          grep -n 'cron:' .github/workflows/dopamine-permanent-installer.yml
+          grep -n 'BUNDLE_ID=.*profile-data.json' .github/workflows/dopamine-permanent-installer.yml
+          if grep -n '^  tunnel:' .github/workflows/dopamine-permanent-installer.yml; then
+            echo '::error::Temporary tunnel job is still present'
+            exit 1
+          fi
+
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add .github/workflows/dopamine-permanent-installer.yml
+          git commit -m 'Finalize permanent Dopamine installer automation'
+
+          for attempt in 1 2 3 4 5; do
+            git fetch origin main
+            git rebase origin/main
+            if git push origin HEAD:main; then
+              exit 0
+            fi
+            sleep $((attempt * 2))
+          done
+          exit 1
+
+      - name: Start the corrected publisher
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          gh api --method POST \
+            "repos/${GITHUB_REPOSITORY}/actions/workflows/dopamine-permanent-installer.yml/dispatches" \
+            -f ref=main
