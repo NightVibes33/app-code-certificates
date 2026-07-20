@@ -1,0 +1,22 @@
+name: Cancel obsolete installer build
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/cancel-obsolete-installer.yml"
+
+permissions:
+  actions: write
+  contents: read
+
+jobs:
+  cancel:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Cancel obsolete permanent-installer run
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euxo pipefail
+          gh api --method POST "repos/${GITHUB_REPOSITORY}/actions/runs/29760371973/cancel" || true
