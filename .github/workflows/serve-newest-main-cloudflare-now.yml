@@ -1,0 +1,124 @@
+name: Serve newest Dopamine main on Cloudflare now
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/serve-newest-main-cloudflare-now.yml"
+
+permissions:
+  actions: read
+  contents: write
+
+concurrency:
+  group: dopamine-main-cloudflare-live
+  cancel-in-progress: true
+
+jobs:
+  serve:
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    steps:
+      - name: Checkout installer generator
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Download newest signed main IPA
+        uses: actions/download-artifact@v4
+        with:
+          name: dopamine-main-signed-site-input
+          path: output
+          github-token: ${{ github.token }}
+          repository: NightVibes33/app-code-certificates
+          run-id: 29770563508
+
+      - name: Start Cloudflare complete installer
+        id: tunnel
+        shell: bash
+        run: |
+          set -euxo pipefail
+          test -s output/Dopamine-iPad5-newest-signed.ipa
+          test -s output/metadata.json
+          rm -rf site
+          mkdir -p site/complete
+
+          RUNNER_TRACKING_ID="" nohup python3 -m http.server 8080 --directory site > http-server.log 2>&1 &
+          echo "$!" > server.pid
+
+          curl -fsSL https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64 -o cloudflared
+          chmod +x cloudflared
+          RUNNER_TRACKING_ID="" nohup ./cloudflared tunnel --url http://127.0.0.1:8080 --no-autoupdate > cloudflared.log 2>&1 &
+          echo "$!" > tunnel.pid
+
+          URL=""
+          for _ in $(seq 1 90); do
+            URL="$(grep -Eo 'https://[-a-z0-9]+\.trycloudflare\.com' cloudflared.log | head -n 1 || true)"
+            [[ -n "$URL" ]] && break
+            sleep 2
+          done
+          if [[ -z "$URL" ]]; then
+            cat cloudflared.log
+            exit 1
+          fi
+
+          RESULT="$(python3 tools/build_dopamine_site.py \
+            --site site/complete \
+            --ipa output/Dopamine-iPad5-newest-signed.ipa \
+            --metadata output/metadata.json \
+            --base-url "$URL/complete")"
+
+          INSTALLER_URL="$URL/complete/"
+          IPA_URL="$(jq -r .ipa_url <<<"$RESULT")"
+          REGISTRATION_URL="$(jq -r .registration_url <<<"$RESULT")"
+          SOURCE_SHA="$(jq -r .source_sha output/metadata.json)"
+
+          printf '%s\n' "$INSTALLER_URL" > cloudflare-installer-url.txt
+          printf '%s\n' "$IPA_URL" > cloudflare-ipa-url.txt
+          printf '%s\n' "$REGISTRATION_URL" > cloudflare-registration-url.txt
+          printf '%s\n' "$SOURCE_SHA" > cloudflare-source-sha.txt
+          echo "installer_url=$INSTALLER_URL" >> "$GITHUB_OUTPUT"
+          echo "ipa_url=$IPA_URL" >> "$GITHUB_OUTPUT"
+          echo "::notice title=Newest Dopamine Cloudflare installer::$INSTALLER_URL"
+
+      - name: Record exact Cloudflare URL
+        shell: bash
+        run: |
+          set -euxo pipefail
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add cloudflare-installer-url.txt cloudflare-ipa-url.txt cloudflare-registration-url.txt cloudflare-source-sha.txt
+          git commit -m "Record newest Dopamine Cloudflare installer"
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase origin main || true
+            if git push origin HEAD:main; then
+              exit 0
+            fi
+            sleep $((attempt * 2))
+          done
+          exit 1
+
+      - name: Upload Cloudflare installer links
+        uses: actions/upload-artifact@v4
+        with:
+          name: Dopamine-main-Cloudflare-installer-links
+          path: |
+            cloudflare-installer-url.txt
+            cloudflare-ipa-url.txt
+            cloudflare-registration-url.txt
+            cloudflare-source-sha.txt
+          retention-days: 2
+
+      - name: Keep Cloudflare installer online
+        shell: bash
+        run: |
+          set -euxo pipefail
+          SERVER_PID="$(cat server.pid)"
+          TUNNEL_PID="$(cat tunnel.pid)"
+          while kill -0 "$SERVER_PID" 2>/dev/null && kill -0 "$TUNNEL_PID" 2>/dev/null; do
+            sleep 30
+          done
+          cat http-server.log || true
+          cat cloudflared.log || true
+          exit 1
