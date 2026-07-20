@@ -82,6 +82,7 @@ jobs:
           security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
           security import signing-work/development.p12 -k "$KEYCHAIN" -P "$P12_PASSWORD" -T /usr/bin/codesign
           security set-key-partition-list -S apple-tool:,apple: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          security list-keychains -d user -s "$KEYCHAIN"
           IDENTITY="$(security find-identity -v -p codesigning "$KEYCHAIN" | awk '/^[[:space:]]*[0-9]+\)/ {print $2; exit}')"
           test -n "$IDENTITY"
 
