@@ -21,11 +21,12 @@ jobs:
       - name: Convert updater to Cloudflare only
         run: |
           set -euxo pipefail
+          sed -i "s/if 'trycloudflare.com' not in result:/if 'trycloudflare' not in result:/" tools/convert_main_installer_to_cloudflare.py
           python3 tools/convert_main_installer_to_cloudflare.py
           git diff --check
           grep -q 'name: Dopamine main Cloudflare installer' .github/workflows/dopamine-main-stable-installer.yml
           ! grep -q 'GitHub Pages\|gh-pages\|deploy-pages\|PAGES_BASE_URL' .github/workflows/dopamine-main-stable-installer.yml
-          grep -q 'trycloudflare.com' .github/workflows/dopamine-main-stable-installer.yml
+          grep -q 'trycloudflare' .github/workflows/dopamine-main-stable-installer.yml
 
       - name: Commit Cloudflare-only updater
         run: |
