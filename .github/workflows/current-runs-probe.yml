@@ -31,4 +31,4 @@ jobs:
           git pull --rebase origin main
           git push origin main
 
-# Post-validation-fix status
+# Cloudflare-only publisher status
