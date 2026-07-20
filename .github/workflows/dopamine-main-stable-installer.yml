@@ -1,9 +1,10 @@
-name: Dopamine main stable installer
+name: Dopamine main Cloudflare installer
 
 on:
   workflow_dispatch:
   schedule:
     - cron: "*/15 * * * *"
+    - cron: "7 */4 * * *"
   push:
     branches:
       - main
@@ -13,25 +14,21 @@ on:
       - "tools/build_dopamine_site.py"
 
 permissions:
+  actions: read
   contents: write
-  pages: write
-  id-token: write
-
-concurrency:
-  group: dopamine-main-stable-installer
-  cancel-in-progress: false
 
 env:
   SOURCE_REPOSITORY: NightVibes33/Dopamine
   SOURCE_BRANCH: main
-  PAGES_BASE_URL: https://nightvibes33.github.io/app-code-certificates
 
 jobs:
   check:
     runs-on: ubuntu-latest
     outputs:
-      changed: ${{ steps.state.outputs.changed }}
+      build_needed: ${{ steps.state.outputs.build_needed }}
+      serve_needed: ${{ steps.state.outputs.serve_needed }}
       source_sha: ${{ steps.state.outputs.source_sha }}
+      artifact_run_id: ${{ steps.state.outputs.artifact_run_id }}
     steps:
       - name: Checkout signing repository
         uses: actions/checkout@v4
@@ -40,6 +37,10 @@ jobs:
 
       - name: Check newest Dopamine main commit
         id: state
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT_NAME: ${{ github.event_name }}
+          EVENT_SCHEDULE: ${{ github.event.schedule }}
         shell: bash
         run: |
           set -euo pipefail
@@ -49,24 +50,38 @@ jobs:
             exit 1
           fi
 
-          git fetch origin gh-pages:refs/remotes/origin/gh-pages 2>/dev/null || true
-          PUBLISHED_SHA="$(git show origin/gh-pages:complete/latest/source-sha.txt 2>/dev/null | tr -d '\r\n' || true)"
+          PUBLISHED_SHA="$(cat cloudflare-source-sha.txt 2>/dev/null | tr -d '\r\n' || true)"
+          ARTIFACT_RUN_ID="$(gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts?name=dopamine-main-signed-site-input&per_page=100" \
+            --jq '[.artifacts[] | select(.expired == false)] | sort_by(.created_at) | reverse | .[0].workflow_run.id // empty' 2>/dev/null || true)"
 
-          echo "source_sha=$SOURCE_SHA" >> "$GITHUB_OUTPUT"
-          if [[ "${{ github.event_name }}" == "workflow_dispatch" || "${{ github.event_name }}" == "push" ]]; then
-            echo "changed=true" >> "$GITHUB_OUTPUT"
-            echo "Forced publisher refresh for ${SOURCE_SHA:0:12}."
-          elif [[ "$SOURCE_SHA" == "$PUBLISHED_SHA" && -n "$PUBLISHED_SHA" ]]; then
-            echo "changed=false" >> "$GITHUB_OUTPUT"
-            echo "Newest main commit ${SOURCE_SHA:0:12} is already published."
-          else
-            echo "changed=true" >> "$GITHUB_OUTPUT"
-            echo "Publishing ${SOURCE_SHA:0:12}; previous=${PUBLISHED_SHA:-none}."
+          BUILD_NEEDED=false
+          SERVE_NEEDED=false
+
+          if [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
+            BUILD_NEEDED=true
+          elif [[ -z "$PUBLISHED_SHA" || "$SOURCE_SHA" != "$PUBLISHED_SHA" ]]; then
+            BUILD_NEEDED=true
+          elif [[ -z "$ARTIFACT_RUN_ID" ]]; then
+            BUILD_NEEDED=true
+          elif [[ "$EVENT_NAME" == "push" ]]; then
+            SERVE_NEEDED=true
+          elif [[ "$EVENT_SCHEDULE" == "7 */4 * * *" ]]; then
+            SERVE_NEEDED=true
           fi
+
+          if [[ "$BUILD_NEEDED" == "true" ]]; then
+            SERVE_NEEDED=true
+          fi
+
+          echo "build_needed=$BUILD_NEEDED" >> "$GITHUB_OUTPUT"
+          echo "serve_needed=$SERVE_NEEDED" >> "$GITHUB_OUTPUT"
+          echo "source_sha=$SOURCE_SHA" >> "$GITHUB_OUTPUT"
+          echo "artifact_run_id=$ARTIFACT_RUN_ID" >> "$GITHUB_OUTPUT"
+          echo "source=${SOURCE_SHA:0:12} published=${PUBLISHED_SHA:-none} artifact_run=${ARTIFACT_RUN_ID:-none} build=$BUILD_NEEDED serve=$SERVE_NEEDED"
 
   build-sign:
     needs: check
-    if: needs.check.outputs.changed == 'true'
+    if: needs.check.outputs.build_needed == 'true'
     runs-on: macos-latest
     timeout-minutes: 90
     steps:
@@ -276,110 +291,145 @@ jobs:
           if-no-files-found: error
           retention-days: 2
 
-  publish:
+  tunnel:
     needs:
       - check
       - build-sign
-    if: needs.check.outputs.changed == 'true' && needs.build-sign.result == 'success'
+    if: always() && needs.check.outputs.serve_needed == 'true' && (needs.build-sign.result == 'success' || needs.build-sign.result == 'skipped')
     runs-on: ubuntu-latest
-    outputs:
-      stable_url: ${{ steps.site.outputs.stable_url }}
-      ipa_url: ${{ steps.site.outputs.ipa_url }}
+    timeout-minutes: 270
+    concurrency:
+      group: dopamine-main-cloudflare-live
+      cancel-in-progress: true
     steps:
       - name: Checkout installer generator
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Download signed newest IPA
+      - name: Download newly built signed IPA
+        if: needs.check.outputs.build_needed == 'true'
         uses: actions/download-artifact@v4
         with:
           name: dopamine-main-signed-site-input
           path: output
 
-      - name: Generate stable complete website
-        id: site
+      - name: Download latest existing signed IPA
+        if: needs.check.outputs.build_needed != 'true'
+        uses: actions/download-artifact@v4
+        with:
+          name: dopamine-main-signed-site-input
+          path: output
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: ${{ needs.check.outputs.artifact_run_id }}
+
+      - name: Start newest Cloudflare complete installer
+        id: tunnel
         shell: bash
         run: |
           set -euxo pipefail
+          test -s output/Dopamine-iPad5-newest-signed.ipa
+          test -s output/metadata.json
           rm -rf site
           mkdir -p site/complete
+
+          RUNNER_TRACKING_ID="" nohup python3 -m http.server 8080 --directory site > http-server.log 2>&1 &
+          echo "$!" > server.pid
+
+          curl -fsSL https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64 -o cloudflared
+          chmod +x cloudflared
+          RUNNER_TRACKING_ID="" nohup ./cloudflared tunnel --url http://127.0.0.1:8080 --no-autoupdate > cloudflared.log 2>&1 &
+          echo "$!" > tunnel.pid
+
+          URL=""
+          for _ in $(seq 1 90); do
+            URL="$(grep -Eo 'https://[-a-z0-9]+\.trycloudflare\.com' cloudflared.log | head -n 1 || true)"
+            [[ -n "$URL" ]] && break
+            sleep 2
+          done
+          if [[ -z "$URL" ]]; then
+            cat cloudflared.log
+            exit 1
+          fi
+
           RESULT="$(python3 tools/build_dopamine_site.py \
             --site site/complete \
             --ipa output/Dopamine-iPad5-newest-signed.ipa \
             --metadata output/metadata.json \
-            --base-url "$PAGES_BASE_URL/complete")"
-          STABLE_URL="$(jq -r .stable_url <<<"$RESULT")"
+            --base-url "$URL/complete")"
+
+          INSTALLER_URL="$URL/complete/"
           IPA_URL="$(jq -r .ipa_url <<<"$RESULT")"
           REGISTRATION_URL="$(jq -r .registration_url <<<"$RESULT")"
-          echo "stable_url=$STABLE_URL" >> "$GITHUB_OUTPUT"
+          SOURCE_SHA="$(jq -r .source_sha output/metadata.json)"
+          printf '%s\n' "$INSTALLER_URL" > cloudflare-installer-url.txt
+          printf '%s\n' "$IPA_URL" > cloudflare-ipa-url.txt
+          printf '%s\n' "$REGISTRATION_URL" > cloudflare-registration-url.txt
+          printf '%s\n' "$SOURCE_SHA" > cloudflare-source-sha.txt
+          echo "installer_url=$INSTALLER_URL" >> "$GITHUB_OUTPUT"
           echo "ipa_url=$IPA_URL" >> "$GITHUB_OUTPUT"
-          printf '%s\n' "$STABLE_URL" > site/installer-url.txt
-          printf '%s\n' "$IPA_URL" > site/ipa-url.txt
-          printf '%s\n' "$REGISTRATION_URL" > site/registration-url.txt
-          touch site/.nojekyll
-          cat > site/index.html <<'HTML'
-          <!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="refresh" content="0;url=./complete/"><title>Opening Dopamine installer</title></head><body><p><a href="./complete/">Open the newest Dopamine installer</a></p><script>location.replace('./complete/');</script></body></html>
-          HTML
+          echo "::notice title=Newest Dopamine Cloudflare installer::$INSTALLER_URL"
 
-      - name: Publish current snapshot to gh-pages
-        shell: bash
+      - name: Record exact current Cloudflare links
         env:
           GH_TOKEN: ${{ github.token }}
-        run: |
-          set -euxo pipefail
-          rm -rf publish-repo
-          git clone "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" publish-repo
-          cd publish-repo
-          git config user.name github-actions[bot]
-          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
-          git switch --orphan gh-pages-current
-          git rm -rf . 2>/dev/null || true
-          cp -a ../site/. .
-          git add -A
-          git commit -m "Publish newest Dopamine main ${{ needs.check.outputs.source_sha }}"
-          git push origin HEAD:gh-pages --force
-
-      - name: Configure GitHub Pages
-        uses: actions/configure-pages@v5
-
-      - name: Upload Pages artifact
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: site
-
-      - name: Upload installer links
-        uses: actions/upload-artifact@v4
-        with:
-          name: Dopamine-main-stable-installer-links
-          path: |
-            site/installer-url.txt
-            site/ipa-url.txt
-            site/registration-url.txt
-          retention-days: 30
-
-      - name: Write publisher summary
         shell: bash
         run: |
-          {
-            echo '## Newest Dopamine main installer published'
-            echo
-            echo '- Stable website: ${{ steps.site.outputs.stable_url }}'
-            echo '- Signed IPA: ${{ steps.site.outputs.ipa_url }}'
-            echo '- Source: ${{ needs.check.outputs.source_sha }}'
-          } >> "$GITHUB_STEP_SUMMARY"
+          set -euxo pipefail
 
-  deploy:
-    needs: publish
-    if: needs.publish.result == 'success'
-    permissions:
-      pages: write
-      id-token: write
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    runs-on: ubuntu-latest
-    steps:
-      - name: Deploy stable complete installer
-        id: deployment
-        uses: actions/deploy-pages@v4
+          update_file() {
+            local path="$1"
+            local content sha
+            content="$(base64 < "$path" | tr -d '\n')"
+            for attempt in 1 2 3 4 5; do
+              sha="$(gh api "repos/${GITHUB_REPOSITORY}/contents/${path}?ref=main" --jq .sha 2>/dev/null || true)"
+              if [[ -n "$sha" ]]; then
+                if gh api --method PUT "repos/${GITHUB_REPOSITORY}/contents/${path}" \
+                  -f message="Update current Dopamine Cloudflare installer" \
+                  -f content="$content" -f branch=main -f sha="$sha" >/dev/null; then
+                  return 0
+                fi
+              else
+                if gh api --method PUT "repos/${GITHUB_REPOSITORY}/contents/${path}" \
+                  -f message="Record current Dopamine Cloudflare installer" \
+                  -f content="$content" -f branch=main >/dev/null; then
+                  return 0
+                fi
+              fi
+              sleep $((attempt * 2))
+            done
+            return 1
+          }
+
+          update_file cloudflare-installer-url.txt
+          update_file cloudflare-ipa-url.txt
+          update_file cloudflare-registration-url.txt
+          update_file cloudflare-source-sha.txt
+
+      - name: Upload Cloudflare installer links
+        uses: actions/upload-artifact@v4
+        with:
+          name: Dopamine-main-Cloudflare-installer-links
+          path: |
+            cloudflare-installer-url.txt
+            cloudflare-ipa-url.txt
+            cloudflare-registration-url.txt
+            cloudflare-source-sha.txt
+          retention-days: 2
+
+      - name: Keep newest installer online
+        shell: bash
+        run: |
+          set -euxo pipefail
+          SERVER_PID="$(cat server.pid)"
+          TUNNEL_PID="$(cat tunnel.pid)"
+          for _ in $(seq 1 530); do
+            if ! kill -0 "$SERVER_PID" 2>/dev/null || ! kill -0 "$TUNNEL_PID" 2>/dev/null; then
+              cat http-server.log || true
+              cat cloudflared.log || true
+              exit 1
+            fi
+            sleep 30
+          done
+          exit 0
