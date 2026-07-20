@@ -180,8 +180,26 @@ jobs:
           python3 - <<'PY'
           import base64
           from pathlib import Path
-          Path('signing-work/development.p12').write_bytes(base64.b64decode(Path('dopamine/Dopamine-Development.p12.b64').read_text().strip()))
-          Path('signing-work/profile.mobileprovision').write_bytes(base64.b64decode(Path('dopamine/Dopamine-iPad5.mobileprovision.b64').read_text().strip()))
+
+          def clean_base64(value: str) -> str:
+              value = ''.join(value.split())
+              return value + ('=' * (-len(value) % 4))
+
+          p12_text = clean_base64(Path('dopamine/Dopamine-Development.p12.b64').read_text())
+          Path('signing-work/development.p12').write_bytes(base64.b64decode(p12_text, validate=True))
+
+          parts = sorted(Path('dopamine/profile.parts').glob('*'))
+          if parts:
+              profile_text = ''.join(''.join(part.read_text().split()) for part in parts)
+              print(f'Joining {len(parts)} provisioning-profile chunks ({len(profile_text)} Base64 characters)')
+          else:
+              profile_text = Path('dopamine/Dopamine-iPad5.mobileprovision.b64').read_text()
+
+          profile_text = clean_base64(profile_text)
+          profile_bytes = base64.b64decode(profile_text, validate=True)
+          if not profile_bytes:
+              raise SystemExit('Decoded provisioning profile is empty')
+          Path('signing-work/profile.mobileprovision').write_bytes(profile_bytes)
           PY
 
           security cms -D -i signing-work/profile.mobileprovision > signing-work/profile.plist
@@ -264,6 +282,117 @@ jobs:
           path: output
           if-no-files-found: error
           retention-days: 2
+
+  tunnel:
+    needs:
+      - check
+      - build-sign
+    if: needs.check.outputs.changed == 'true' && needs.build-sign.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    steps:
+      - name: Checkout installer generator
+        uses: actions/checkout@v4
+
+      - name: Download signed IPA
+        uses: actions/download-artifact@v4
+        with:
+          name: dopamine-signed-site-input
+          path: output
+
+      - name: Start Cloudflare installer and build complete page
+        id: tunnel
+        shell: bash
+        run: |
+          set -euxo pipefail
+          mkdir -p site/complete
+
+          RUNNER_TRACKING_ID="" nohup python3 -m http.server 8080 --directory site > http-server.log 2>&1 &
+          echo "$!" > server.pid
+
+          curl -fsSL \
+            https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64 \
+            -o cloudflared
+          chmod +x cloudflared
+          RUNNER_TRACKING_ID="" nohup ./cloudflared tunnel --url http://127.0.0.1:8080 --no-autoupdate > cloudflared.log 2>&1 &
+          echo "$!" > tunnel.pid
+
+          URL=""
+          for _ in $(seq 1 90); do
+            URL="$(grep -Eo 'https://[-a-z0-9]+\.trycloudflare\.com' cloudflared.log | head -n 1 || true)"
+            if [[ -n "$URL" ]]; then
+              break
+            fi
+            sleep 2
+          done
+
+          if [[ -z "$URL" ]]; then
+            cat cloudflared.log
+            exit 1
+          fi
+
+          RESULT="$(python3 tools/build_dopamine_site.py \
+            --site site/complete \
+            --ipa output/Dopamine-iPad5-StockBaseline-signed.ipa \
+            --metadata output/metadata.json \
+            --base-url "$URL/complete")"
+
+          INSTALLER_URL="$URL/complete/"
+          IPA_URL="$(jq -r .ipa_url <<<"$RESULT")"
+          REGISTRATION_URL="$(jq -r .registration_url <<<"$RESULT")"
+
+          printf '%s\n' "$INSTALLER_URL" > installer-url.txt
+          printf '%s\n' "$IPA_URL" > ipa-url.txt
+          printf '%s\n' "$REGISTRATION_URL" > registration-url.txt
+          cat > installer.webloc <<EOF
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0"><dict><key>URL</key><string>${INSTALLER_URL}</string></dict></plist>
+          EOF
+
+          echo "installer_url=$INSTALLER_URL" >> "$GITHUB_OUTPUT"
+          echo "ipa_url=$IPA_URL" >> "$GITHUB_OUTPUT"
+          echo "registration_url=$REGISTRATION_URL" >> "$GITHUB_OUTPUT"
+          echo "::notice title=Dopamine iPad installer::$INSTALLER_URL"
+
+      - name: Upload Cloudflare installer URL
+        uses: actions/upload-artifact@v4
+        with:
+          name: Dopamine-iPad5-Cloudflare-Installer-URL
+          path: |
+            installer-url.txt
+            ipa-url.txt
+            registration-url.txt
+            installer.webloc
+          if-no-files-found: error
+          retention-days: 2
+
+      - name: Write Cloudflare installer summary
+        shell: bash
+        run: |
+          {
+            echo '## Dopamine Cloudflare installer online'
+            echo
+            echo '- Installer with Start iPad Registration and Install Dopamine Build:'
+            echo '  ${{ steps.tunnel.outputs.installer_url }}'
+            echo '- Registration:'
+            echo '  ${{ steps.tunnel.outputs.registration_url }}'
+            echo '- Signed IPA:'
+            echo '  ${{ steps.tunnel.outputs.ipa_url }}'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Keep Cloudflare installer online
+        shell: bash
+        run: |
+          set -euxo pipefail
+          SERVER_PID="$(cat server.pid)"
+          TUNNEL_PID="$(cat tunnel.pid)"
+          while kill -0 "$SERVER_PID" 2>/dev/null && kill -0 "$TUNNEL_PID" 2>/dev/null; do
+            sleep 30
+          done
+          cat http-server.log || true
+          cat cloudflared.log || true
+          exit 1
 
   publish:
     needs:
