@@ -1,0 +1,80 @@
+2026-07-20T16:55:17.5747497Z [36;1mgit diff --check[0m
+2026-07-20T16:55:17.5749536Z [36;1mgit diff -- .github/workflows/dopamine-permanent-installer.yml .github/workflows/fast-cloudflare-installer.yml[0m
+2026-07-20T16:55:17.5751727Z [36;1mgit config user.name github-actions[bot][0m
+2026-07-20T16:55:17.5753292Z [36;1mgit config user.email 41898282+github-actions[bot]@users.noreply.github.com[0m
+2026-07-20T16:55:17.5755868Z [36;1mgit add .github/workflows/dopamine-permanent-installer.yml .github/workflows/fast-cloudflare-installer.yml[0m
+2026-07-20T16:55:17.5758524Z [36;1mgit commit -m 'Fix same-step bundle ID propagation'[0m
+2026-07-20T16:55:17.5759672Z [36;1mgit push[0m
+2026-07-20T16:55:17.5849070Z shell: /usr/bin/bash --noprofile --norc -e -o pipefail {0}
+2026-07-20T16:55:17.5850261Z ##[endgroup]
+2026-07-20T16:55:17.5975552Z + python3 -
+2026-07-20T16:55:17.6247507Z + git diff --check
+2026-07-20T16:55:17.6286436Z + git diff -- .github/workflows/dopamine-permanent-installer.yml .github/workflows/fast-cloudflare-installer.yml
+2026-07-20T16:55:17.6310352Z diff --git a/.github/workflows/dopamine-permanent-installer.yml b/.github/workflows/dopamine-permanent-installer.yml
+2026-07-20T16:55:17.6316346Z + git config user.name 'github-actions[bot]'
+2026-07-20T16:55:17.6318725Z index a8f0f00..51953bf 100644
+2026-07-20T16:55:17.6321049Z --- a/.github/workflows/dopamine-permanent-installer.yml
+2026-07-20T16:55:17.6323558Z +++ b/.github/workflows/dopamine-permanent-installer.yml
+2026-07-20T16:55:17.6325658Z @@ -212,10 +212,11 @@ jobs:
+2026-07-20T16:55:17.6327326Z            bundle_id = app_identifier.split('.', 1)[1]
+2026-07-20T16:55:17.6331518Z            Path('signing-work/entitlements.plist').write_bytes(plistlib.dumps(entitlements, fmt=plistlib.FMT_XML, sort_keys=False))
+2026-07-20T16:55:17.6336710Z            Path('signing-work/profile-data.json').write_text(json.dumps({'bundle_id': bundle_id}))
+2026-07-20T16:55:17.6340988Z -          with open(os.environ['GITHUB_ENV'], 'a') as env:
+2026-07-20T16:55:17.6343989Z + git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+2026-07-20T16:55:17.6346891Z -              env.write(f'BUNDLE_ID={bundle_id}\n')
+2026-07-20T16:55:17.6349632Z +          Path('signing-work/bundle-id.txt').write_text(bundle_id)
+2026-07-20T16:55:17.6351783Z            PY
+2026-07-20T16:55:17.6353316Z  
+2026-07-20T16:55:17.6354814Z +          BUNDLE_ID="$(cat signing-work/bundle-id.txt)"
+2026-07-20T16:55:17.6356815Z +          export BUNDLE_ID
+2026-07-20T16:55:17.6359153Z            KEYCHAIN="$RUNNER_TEMP/dopamine-signing.keychain-db"
+2026-07-20T16:55:17.6362767Z            KEYCHAIN_PASSWORD="$(python3 -c 'import secrets; print(secrets.token_urlsafe(24))')"
+2026-07-20T16:55:17.6367470Z + git add .github/workflows/dopamine-permanent-installer.yml .github/workflows/fast-cloudflare-installer.yml
+2026-07-20T16:55:17.6372126Z            security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+2026-07-20T16:55:17.6376240Z diff --git a/.github/workflows/fast-cloudflare-installer.yml b/.github/workflows/fast-cloudflare-installer.yml
+2026-07-20T16:55:17.6380363Z index 6881eab..b93708b 100644
+2026-07-20T16:55:17.6382243Z --- a/.github/workflows/fast-cloudflare-installer.yml
+2026-07-20T16:55:17.6384572Z +++ b/.github/workflows/fast-cloudflare-installer.yml
+2026-07-20T16:55:17.6386637Z @@ -68,10 +68,11 @@ jobs:
+2026-07-20T16:55:17.6389353Z            Path('signing-work/entitlements.plist').write_bytes(
+2026-07-20T16:55:17.6392312Z                plistlib.dumps(entitlements, fmt=plistlib.FMT_XML, sort_keys=False)
+2026-07-20T16:55:17.6394815Z            )
+2026-07-20T16:55:17.6396379Z -          with open(os.environ['GITHUB_ENV'], 'a') as env:
+2026-07-20T16:55:17.6398763Z -              env.write(f'BUNDLE_ID={bundle_id}\n')
+2026-07-20T16:55:17.6401019Z +          Path('signing-work/bundle-id.txt').write_text(bundle_id)
+2026-07-20T16:55:17.6403068Z            PY
+2026-07-20T16:55:17.6404691Z  
+2026-07-20T16:55:17.6405977Z +          BUNDLE_ID="$(cat signing-work/bundle-id.txt)"
+2026-07-20T16:55:17.6408079Z +          export BUNDLE_ID
+2026-07-20T16:55:17.6410058Z            KEYCHAIN="$RUNNER_TEMP/dopamine-fast-signing.keychain-db"
+2026-07-20T16:55:17.6413777Z            KEYCHAIN_PASSWORD="$(python3 -c 'import secrets; print(secrets.token_urlsafe(24))')"
+2026-07-20T16:55:17.6416832Z + git commit -m 'Fix same-step bundle ID propagation'
+2026-07-20T16:55:17.6419961Z            security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+2026-07-20T16:55:17.6490108Z [main 089ce76] Fix same-step bundle ID propagation
+2026-07-20T16:55:17.6494782Z  2 files changed, 6 insertions(+), 4 deletions(-)
+2026-07-20T16:55:17.6508768Z + git push
+2026-07-20T16:55:17.9367558Z To https://github.com/NightVibes33/app-code-certificates
+2026-07-20T16:55:17.9369775Z  ! [rejected]        main -> main (non-fast-forward)
+2026-07-20T16:55:17.9371993Z error: failed to push some refs to 'https://github.com/NightVibes33/app-code-certificates'
+2026-07-20T16:55:17.9395304Z hint: Updates were rejected because the tip of your current branch is behind
+2026-07-20T16:55:17.9397254Z hint: its remote counterpart. If you want to integrate the remote changes,
+2026-07-20T16:55:17.9399235Z hint: use 'git pull' before pushing again.
+2026-07-20T16:55:17.9409230Z hint: See the 'Note about fast-forwards' in 'git push --help' for details.
+2026-07-20T16:55:17.9427062Z ##[error]Process completed with exit code 1.
+2026-07-20T16:55:17.9643960Z Node 20 is being deprecated. This workflow is running with Node 24 by default. If you need to temporarily use Node 20, you can set the ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION=true environment variable. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/
+2026-07-20T16:55:17.9646683Z Post job cleanup.
+2026-07-20T16:55:18.0629081Z [command]/usr/bin/git version
+2026-07-20T16:55:18.0699608Z git version 2.54.0
+2026-07-20T16:55:18.0779391Z Temporarily overriding HOME='/home/runner/work/_temp/2c2bd4c7-bf7c-49c8-bf25-b5d9198eb42b' before making global git config changes
+2026-07-20T16:55:18.0799235Z Adding repository directory to the temporary git global config as a safe directory
+2026-07-20T16:55:18.0802398Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/app-code-certificates/app-code-certificates
+2026-07-20T16:55:18.0915832Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-07-20T16:55:18.0961168Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-07-20T16:55:18.1683327Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-07-20T16:55:18.1754991Z http.https://github.com/.extraheader
+2026-07-20T16:55:18.1819828Z [command]/usr/bin/git config --local --unset-all http.https://github.com/.extraheader
+2026-07-20T16:55:18.1941705Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-07-20T16:55:18.2699491Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-07-20T16:55:18.2829456Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-07-20T16:55:18.3462165Z Cleaning up orphan processes
+2026-07-20T16:55:18.3734979Z ##[warning]Node.js 20 is deprecated. The following actions target Node.js 20 but are being forced to run on Node.js 24: actions/checkout@v4. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/
