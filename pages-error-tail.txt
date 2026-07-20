@@ -1,0 +1,140 @@
+2026-07-20T19:18:27.7110194Z ##[group]Run set -euxo pipefail
+2026-07-20T19:18:27.7110606Z [36;1mset -euxo pipefail[0m
+2026-07-20T19:18:27.7110893Z [36;1mrm -rf site[0m
+2026-07-20T19:18:27.7111153Z [36;1mmkdir -p site/complete[0m
+2026-07-20T19:18:27.7111506Z [36;1mRESULT="$(python3 tools/build_dopamine_site.py \[0m
+2026-07-20T19:18:27.7111880Z [36;1m  --site site/complete \[0m
+2026-07-20T19:18:27.7112257Z [36;1m  --ipa output/Dopamine-iPad5-newest-signed.ipa \[0m
+2026-07-20T19:18:27.7112646Z [36;1m  --metadata output/metadata.json \[0m
+2026-07-20T19:18:27.7113005Z [36;1m  --base-url "$PAGES_BASE_URL/complete")"[0m
+2026-07-20T19:18:27.7113380Z [36;1mSTABLE_URL="$(jq -r .stable_url <<<"$RESULT")"[0m
+2026-07-20T19:18:27.7113764Z [36;1mIPA_URL="$(jq -r .ipa_url <<<"$RESULT")"[0m
+2026-07-20T19:18:27.7114190Z [36;1mREGISTRATION_URL="$(jq -r .registration_url <<<"$RESULT")"[0m
+2026-07-20T19:18:27.7114638Z [36;1mecho "stable_url=$STABLE_URL" >> "$GITHUB_OUTPUT"[0m
+2026-07-20T19:18:27.7115069Z [36;1mecho "ipa_url=$IPA_URL" >> "$GITHUB_OUTPUT"[0m
+2026-07-20T19:18:27.7115461Z [36;1mprintf '%s\n' "$STABLE_URL" > site/installer-url.txt[0m
+2026-07-20T19:18:27.7115870Z [36;1mprintf '%s\n' "$IPA_URL" > site/ipa-url.txt[0m
+2026-07-20T19:18:27.7116294Z [36;1mprintf '%s\n' "$REGISTRATION_URL" > site/registration-url.txt[0m
+2026-07-20T19:18:27.7116691Z [36;1mtouch site/.nojekyll[0m
+2026-07-20T19:18:27.7116968Z [36;1mcat > site/index.html <<'HTML'[0m
+2026-07-20T19:18:27.7118666Z [36;1m<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="refresh" content="0;url=./complete/"><title>Opening Dopamine installer</title></head><body><p><a href="./complete/">Open the newest Dopamine installer</a></p><script>location.replace('./complete/');</script></body></html>[0m
+2026-07-20T19:18:27.7120061Z [36;1mHTML[0m
+2026-07-20T19:18:27.7208993Z shell: /usr/bin/bash --noprofile --norc -e -o pipefail {0}
+2026-07-20T19:18:27.7209401Z env:
+2026-07-20T19:18:27.7209665Z   SOURCE_REPOSITORY: NightVibes33/Dopamine
+2026-07-20T19:18:27.7209983Z   SOURCE_BRANCH: main
+2026-07-20T19:18:27.7210383Z   PAGES_BASE_URL: https://nightvibes33.github.io/app-code-certificates
+2026-07-20T19:18:27.7210828Z ##[endgroup]
+2026-07-20T19:18:27.7309840Z + rm -rf site
+2026-07-20T19:18:27.7322267Z + mkdir -p site/complete
+2026-07-20T19:18:27.7342684Z ++ python3 tools/build_dopamine_site.py --site site/complete --ipa output/Dopamine-iPad5-newest-signed.ipa --metadata output/metadata.json --base-url https://nightvibes33.github.io/app-code-certificates/complete
+2026-07-20T19:18:27.7917287Z + RESULT='{"bundle_id": "com.nightvibes33.dopamine.ipad5", "version": "2.4.99", "build": "20260720191805", "title": "Dopamine iPad 5", "source_sha": "9b0b648346c96151556214e9100ee8029f2e7d80", "build_id": "20260720191805-9b0b648346", "stable_url": "https://nightvibes33.github.io/app-code-certificates/complete/", "unique_url": "https://nightvibes33.github.io/app-code-certificates/complete/builds/20260720191805-9b0b648346/", "registration_url": "https://nightvibes33.github.io/app-code-certificates/complete/register/", "ipa_url": "https://nightvibes33.github.io/app-code-certificates/complete/latest/Dopamine-iPad5-StockBaseline.ipa", "manifest_url": "https://nightvibes33.github.io/app-code-certificates/complete/latest/manifest.plist"}'
+2026-07-20T19:18:27.7923309Z ++ jq -r .stable_url
+2026-07-20T19:18:27.7949747Z + STABLE_URL=https://nightvibes33.github.io/app-code-certificates/complete/
+2026-07-20T19:18:27.7954619Z ++ jq -r .ipa_url
+2026-07-20T19:18:27.7983232Z + IPA_URL=https://nightvibes33.github.io/app-code-certificates/complete/latest/Dopamine-iPad5-StockBaseline.ipa
+2026-07-20T19:18:27.7989662Z ++ jq -r .registration_url
+2026-07-20T19:18:27.8016758Z + REGISTRATION_URL=https://nightvibes33.github.io/app-code-certificates/complete/register/
+2026-07-20T19:18:27.8018672Z + echo stable_url=https://nightvibes33.github.io/app-code-certificates/complete/
+2026-07-20T19:18:27.8020852Z + echo ipa_url=https://nightvibes33.github.io/app-code-certificates/complete/latest/Dopamine-iPad5-StockBaseline.ipa
+2026-07-20T19:18:27.8022708Z + printf '%s\n' https://nightvibes33.github.io/app-code-certificates/complete/
+2026-07-20T19:18:27.8024352Z + printf '%s\n' https://nightvibes33.github.io/app-code-certificates/complete/latest/Dopamine-iPad5-StockBaseline.ipa
+2026-07-20T19:18:27.8026269Z + printf '%s\n' https://nightvibes33.github.io/app-code-certificates/complete/register/
+2026-07-20T19:18:27.8027364Z + touch site/.nojekyll
+2026-07-20T19:18:27.8033755Z + cat
+2026-07-20T19:18:27.8123279Z ##[group]Run set -euxo pipefail
+2026-07-20T19:18:27.8123651Z [36;1mset -euxo pipefail[0m
+2026-07-20T19:18:27.8123952Z [36;1mrm -rf publish-repo[0m
+2026-07-20T19:18:27.8124525Z [36;1mgit clone "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" publish-repo[0m
+2026-07-20T19:18:27.8125099Z [36;1mcd publish-repo[0m
+2026-07-20T19:18:27.8125419Z [36;1mgit config user.name github-actions[bot][0m
+2026-07-20T19:18:27.8125932Z [36;1mgit config user.email 41898282+github-actions[bot]@users.noreply.github.com[0m
+2026-07-20T19:18:27.8126458Z [36;1mgit switch --orphan gh-pages-current[0m
+2026-07-20T19:18:27.8126828Z [36;1mgit rm -rf . 2>/dev/null || true[0m
+2026-07-20T19:18:27.8127137Z [36;1mcp -a ../site/. .[0m
+2026-07-20T19:18:27.8127405Z [36;1mgit add -A[0m
+2026-07-20T19:18:27.8128274Z [36;1mgit commit -m "Publish newest Dopamine main 9b0b648346c96151556214e9100ee8029f2e7d80"[0m
+2026-07-20T19:18:27.8129016Z [36;1mgit push origin HEAD:gh-pages --force[0m
+2026-07-20T19:18:27.8189374Z shell: /usr/bin/bash --noprofile --norc -e -o pipefail {0}
+2026-07-20T19:18:27.8189770Z env:
+2026-07-20T19:18:27.8190020Z   SOURCE_REPOSITORY: NightVibes33/Dopamine
+2026-07-20T19:18:27.8190348Z   SOURCE_BRANCH: main
+2026-07-20T19:18:27.8190747Z   PAGES_BASE_URL: https://nightvibes33.github.io/app-code-certificates
+2026-07-20T19:18:27.8193735Z   GH_TOKEN: ***
+2026-07-20T19:18:27.8193975Z ##[endgroup]
+2026-07-20T19:18:27.8286559Z + rm -rf publish-repo
+2026-07-20T19:18:27.8303454Z + git clone ***github.com/NightVibes33/app-code-certificates.git publish-repo
+2026-07-20T19:18:27.8312275Z Cloning into 'publish-repo'...
+2026-07-20T19:18:28.3285277Z + cd publish-repo
+2026-07-20T19:18:28.3298660Z + git config user.name 'github-actions[bot]'
+2026-07-20T19:18:28.3323139Z + git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+2026-07-20T19:18:28.3348819Z + git switch --orphan gh-pages-current
+2026-07-20T19:18:28.3397110Z Switched to a new branch 'gh-pages-current'
+2026-07-20T19:18:28.3418731Z + git rm -rf .
+2026-07-20T19:18:28.3438867Z + true
+2026-07-20T19:18:28.3439591Z + cp -a ../site/. .
+2026-07-20T19:18:28.3698988Z + git add -A
+2026-07-20T19:18:29.9189444Z + git commit -m 'Publish newest Dopamine main 9b0b648346c96151556214e9100ee8029f2e7d80'
+2026-07-20T19:18:29.9262925Z [gh-pages-current (root-commit) c9473e5] Publish newest Dopamine main 9b0b648346c96151556214e9100ee8029f2e7d80
+2026-07-20T19:18:29.9264285Z  19 files changed, 252 insertions(+)
+2026-07-20T19:18:29.9265161Z  create mode 100644 .nojekyll
+2026-07-20T19:18:29.9265875Z  create mode 100644 complete/.nojekyll
+2026-07-20T19:18:29.9266749Z  create mode 100644 complete/builds/20260720191805-9b0b648346/index.html
+2026-07-20T19:18:29.9268145Z  create mode 100644 complete/builds/20260720191805-9b0b648346/manifest.plist
+2026-07-20T19:18:29.9268938Z + git push origin HEAD:gh-pages --force
+2026-07-20T19:18:29.9269674Z  create mode 100644 complete/index.html
+2026-07-20T19:18:29.9270445Z  create mode 100644 complete/installer-url.txt
+2026-07-20T19:18:29.9271114Z  create mode 100644 complete/latest.json
+2026-07-20T19:18:29.9271986Z  create mode 100644 complete/latest/Dopamine-iPad5-StockBaseline.ipa
+2026-07-20T19:18:29.9272942Z  create mode 100644 complete/latest/index.html
+2026-07-20T19:18:29.9273850Z  create mode 100644 complete/latest/manifest.plist
+2026-07-20T19:18:29.9274713Z  create mode 100644 complete/latest/metadata.json
+2026-07-20T19:18:29.9275552Z  create mode 100644 complete/latest/source-sha.txt
+2026-07-20T19:18:29.9276636Z  create mode 100644 complete/manifest.plist
+2026-07-20T19:18:29.9277520Z  create mode 100644 complete/register/index.html
+2026-07-20T19:18:29.9285272Z  create mode 100644 complete/stable-installer-url.txt
+2026-07-20T19:18:29.9285996Z  create mode 100644 index.html
+2026-07-20T19:18:29.9286679Z  create mode 100644 installer-url.txt
+2026-07-20T19:18:29.9287405Z  create mode 100644 ipa-url.txt
+2026-07-20T19:18:29.9288461Z  create mode 100644 registration-url.txt
+2026-07-20T19:18:33.0352086Z remote: warning: See https://gh.io/lfs for more information.        
+2026-07-20T19:18:33.0354021Z remote: warning: File complete/latest/Dopamine-iPad5-StockBaseline.ipa is 51.34 MB; this is larger than GitHub's recommended maximum file size of 50.00 MB        
+2026-07-20T19:18:33.0356029Z remote: warning: GH001: Large files detected. You may want to try Git Large File Storage - https://git-lfs.github.com.        
+2026-07-20T19:18:33.4730795Z remote: 
+2026-07-20T19:18:33.4731774Z remote: Create a pull request for 'gh-pages' on GitHub by visiting:        
+2026-07-20T19:18:33.4732643Z remote:      https://github.com/NightVibes33/app-code-certificates/pull/new/gh-pages        
+2026-07-20T19:18:33.4733191Z remote: 
+2026-07-20T19:18:33.4737006Z To https://github.com/NightVibes33/app-code-certificates.git
+2026-07-20T19:18:33.4737936Z  * [new branch]      HEAD -> gh-pages
+2026-07-20T19:18:33.4834331Z Node 20 is being deprecated. This workflow is running with Node 24 by default. If you need to temporarily use Node 20, you can set the ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION=true environment variable. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/
+2026-07-20T19:18:33.4835647Z ##[group]Run actions/configure-pages@v5
+2026-07-20T19:18:33.4835927Z with:
+2026-07-20T19:18:33.4838749Z   token: ***
+2026-07-20T19:18:33.4838975Z   enablement: false
+2026-07-20T19:18:33.4839187Z env:
+2026-07-20T19:18:33.4839428Z   SOURCE_REPOSITORY: NightVibes33/Dopamine
+2026-07-20T19:18:33.4839722Z   SOURCE_BRANCH: main
+2026-07-20T19:18:33.4840066Z   PAGES_BASE_URL: https://nightvibes33.github.io/app-code-certificates
+2026-07-20T19:18:33.4840452Z ##[endgroup]
+2026-07-20T19:18:33.8322650Z ##[error]Get Pages site failed. Please verify that the repository has Pages enabled and configured to build using GitHub Actions, or consider exploring the `enablement` parameter for this action. Error: Not Found - https://docs.github.com/rest/pages/pages#get-a-apiname-pages-site
+2026-07-20T19:18:33.8332953Z ##[error]HttpError: Not Found - https://docs.github.com/rest/pages/pages#get-a-apiname-pages-site
+2026-07-20T19:18:33.8599571Z Node 20 is being deprecated. This workflow is running with Node 24 by default. If you need to temporarily use Node 20, you can set the ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION=true environment variable. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/
+2026-07-20T19:18:33.8600858Z Post job cleanup.
+2026-07-20T19:18:33.9499913Z [command]/usr/bin/git version
+2026-07-20T19:18:33.9568319Z git version 2.54.0
+2026-07-20T19:18:33.9619514Z Temporarily overriding HOME='/home/runner/work/_temp/21330cbb-b29e-43f5-9a26-5aafa62580ee' before making global git config changes
+2026-07-20T19:18:33.9630574Z Adding repository directory to the temporary git global config as a safe directory
+2026-07-20T19:18:33.9641001Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/app-code-certificates/app-code-certificates
+2026-07-20T19:18:33.9711291Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-07-20T19:18:33.9799157Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-07-20T19:18:34.0123712Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-07-20T19:18:34.0168330Z http.https://github.com/.extraheader
+2026-07-20T19:18:34.0198667Z [command]/usr/bin/git config --local --unset-all http.https://github.com/.extraheader
+2026-07-20T19:18:34.0257488Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-07-20T19:18:34.0630569Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-07-20T19:18:34.0674059Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-07-20T19:18:34.1213275Z Evaluate and set job outputs
+2026-07-20T19:18:34.1219438Z Set output 'stable_url'
+2026-07-20T19:18:34.1221455Z Set output 'ipa_url'
+2026-07-20T19:18:34.1222568Z Cleaning up orphan processes
+2026-07-20T19:18:34.1464869Z ##[warning]Node.js 20 is deprecated. The following actions target Node.js 20 but are being forced to run on Node.js 24: actions/checkout@v4, actions/configure-pages@v5, actions/download-artifact@v4. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/
