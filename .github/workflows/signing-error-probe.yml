@@ -19,7 +19,7 @@ jobs:
       - name: Extract failed signing log tail
         env:
           GH_TOKEN: ${{ github.token }}
-          JOB_ID: "88408345215"
+          JOB_ID: "88414658818"
         shell: bash
         run: |
           set -euo pipefail
@@ -28,10 +28,10 @@ jobs:
             echo "Job: ${JOB_ID}"
             echo "Extracted: $(date -u +'%Y-%m-%dT%H:%M:%SZ')"
             echo
-            tail -n 450 job.log
+            tail -n 500 job.log
           } > signing-error-tail.txt
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
           git add signing-error-tail.txt
-          git commit -m 'Record signing error tail'
+          git commit -m 'Refresh signing error tail'
           git push
