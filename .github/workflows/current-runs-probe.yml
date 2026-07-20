@@ -31,4 +31,4 @@ jobs:
           git pull --rebase origin main
           git push origin main
 
-# keychain-fixed installer refresh
+# stable installer workflow status refresh
