@@ -1,9 +1,29 @@
 [
   {
-    "id": 29783496393,
+    "id": 29783704511,
     "name": "Current runs probe",
     "status": "in_progress",
     "conclusion": null,
+    "head_sha": "cf400ba9a359d623aa8851de878e2a08543490d9",
+    "event": "push",
+    "created_at": "2026-07-20T22:22:47Z",
+    "html_url": "https://github.com/NightVibes33/app-code-certificates/actions/runs/29783704511"
+  },
+  {
+    "id": 29783670024,
+    "name": "Dopamine profile registration OTA installer",
+    "status": "completed",
+    "conclusion": "failure",
+    "head_sha": "ac3833f9e5bffb224109250f364d73c2bff4041d",
+    "event": "push",
+    "created_at": "2026-07-20T22:22:11Z",
+    "html_url": "https://github.com/NightVibes33/app-code-certificates/actions/runs/29783670024"
+  },
+  {
+    "id": 29783496393,
+    "name": "Current runs probe",
+    "status": "completed",
+    "conclusion": "success",
     "head_sha": "72520bf00b236297edcec7776c6a246f5c8ec46b",
     "event": "push",
     "created_at": "2026-07-20T22:19:08Z",
@@ -12,8 +32,8 @@
   {
     "id": 29783464769,
     "name": "Fix registration server environment",
-    "status": "in_progress",
-    "conclusion": null,
+    "status": "completed",
+    "conclusion": "failure",
     "head_sha": "d848158e0d00c27b72a75f2ff683514b63548b05",
     "event": "push",
     "created_at": "2026-07-20T22:18:36Z",
@@ -478,25 +498,5 @@
     "event": "push",
     "created_at": "2026-07-20T17:00:57Z",
     "html_url": "https://github.com/NightVibes33/app-code-certificates/actions/runs/29762021451"
-  },
-  {
-    "id": 29761961517,
-    "name": "Cancel conflicting tunnel removal run",
-    "status": "completed",
-    "conclusion": "success",
-    "head_sha": "505e76c9a13c479f6fa2025aa0b2af6aacb3b5c7",
-    "event": "push",
-    "created_at": "2026-07-20T17:00:11Z",
-    "html_url": "https://github.com/NightVibes33/app-code-certificates/actions/runs/29761961517"
-  },
-  {
-    "id": 29761907408,
-    "name": "Current runs probe",
-    "status": "completed",
-    "conclusion": "success",
-    "head_sha": "af7758765b6137292910fdb85c62628f70ba7112",
-    "event": "push",
-    "created_at": "2026-07-20T16:59:23Z",
-    "html_url": "https://github.com/NightVibes33/app-code-certificates/actions/runs/29761907408"
   }
 ]
