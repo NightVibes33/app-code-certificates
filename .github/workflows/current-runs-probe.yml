@@ -31,4 +31,4 @@ jobs:
           git pull --rebase origin main
           git push origin main
 
-# Repaired registration runner status
+# Race-safe registration patch status
