@@ -1,0 +1,79 @@
+name: Fix registration server environment
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/fix-registration-venv.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Patch registration runner
+        shell: bash
+        run: |
+          set -euxo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path('.github/workflows/dopamine-main-stable-installer.yml')
+          text = path.read_text()
+
+          old_pip = '          python3 -m pip install --user PyJWT cryptography\n'
+          new_pip = '''          python3 -m venv registration-venv
+          registration-venv/bin/python -m pip install --upgrade pip
+          registration-venv/bin/python -m pip install PyJWT cryptography
+          echo "REGISTRATION_PYTHON=$GITHUB_WORKSPACE/registration-venv/bin/python" >> "$GITHUB_ENV"
+'''
+          if old_pip not in text:
+              raise SystemExit('pip setup line not found')
+          text = text.replace(old_pip, new_pip, 1)
+
+          old_start = '          RUNNER_TRACKING_ID="" nohup python3 tools/dopamine_registration_server.py \\\n'
+          new_start = '          RUNNER_TRACKING_ID="" nohup "$REGISTRATION_PYTHON" tools/dopamine_registration_server.py \\\n'
+          if old_start not in text:
+              raise SystemExit('registration server launch line not found')
+          text = text.replace(old_start, new_start, 1)
+
+          old_decision = '''          if [[ "$EVENT_NAME" == "workflow_dispatch" || "$EVENT_NAME" == "push" ]]; then
+            BUILD_NEEDED=true
+          elif [[ -z "$PUBLISHED_SHA" || "$SOURCE_SHA" != "$PUBLISHED_SHA" ]]; then
+'''
+          new_decision = '''          if [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
+            BUILD_NEEDED=true
+          elif [[ "$EVENT_NAME" == "push" ]] && git diff-tree --no-commit-id --name-only -r "$GITHUB_SHA" | grep -q '^dopamine/'; then
+            BUILD_NEEDED=true
+          elif [[ -z "$PUBLISHED_SHA" || "$SOURCE_SHA" != "$PUBLISHED_SHA" ]]; then
+'''
+          if old_decision not in text:
+              raise SystemExit('build decision block not found')
+          text = text.replace(old_decision, new_decision, 1)
+
+          old_schedule = '''          elif [[ "$EVENT_SCHEDULE" == "7 */4 * * *" ]]; then
+            SERVE_NEEDED=true
+'''
+          new_schedule = '''          elif [[ "$EVENT_NAME" == "push" || "$EVENT_SCHEDULE" == "7 */4 * * *" ]]; then
+            SERVE_NEEDED=true
+'''
+          if old_schedule not in text:
+              raise SystemExit('serve decision line not found')
+          text = text.replace(old_schedule, new_schedule, 1)
+          path.write_text(text)
+          PY
+
+          git diff --check
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add .github/workflows/dopamine-main-stable-installer.yml
+          git rm .github/workflows/fix-registration-venv.yml
+          git commit -m 'Run registration server in a virtual environment'
+          git pull --rebase origin main
+          git push origin main
