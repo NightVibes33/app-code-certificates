@@ -1,0 +1,33 @@
+name: Stable installer Pages error probe
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/pages-error-probe.yml"
+
+permissions:
+  actions: read
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Capture Pages failure tail
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh api "repos/${GITHUB_REPOSITORY}/actions/jobs/88450307349/logs" > pages-publish.log
+          tail -n 140 pages-publish.log > pages-error-tail.txt
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add pages-error-tail.txt
+          git commit -m 'Record stable installer Pages error'
+          git pull --rebase origin main
+          git push origin main
