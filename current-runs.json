@@ -1,9 +1,29 @@
 [
   {
-    "id": 29783387326,
+    "id": 29783496393,
     "name": "Current runs probe",
     "status": "in_progress",
     "conclusion": null,
+    "head_sha": "72520bf00b236297edcec7776c6a246f5c8ec46b",
+    "event": "push",
+    "created_at": "2026-07-20T22:19:08Z",
+    "html_url": "https://github.com/NightVibes33/app-code-certificates/actions/runs/29783496393"
+  },
+  {
+    "id": 29783464769,
+    "name": "Fix registration server environment",
+    "status": "in_progress",
+    "conclusion": null,
+    "head_sha": "d848158e0d00c27b72a75f2ff683514b63548b05",
+    "event": "push",
+    "created_at": "2026-07-20T22:18:36Z",
+    "html_url": "https://github.com/NightVibes33/app-code-certificates/actions/runs/29783464769"
+  },
+  {
+    "id": 29783387326,
+    "name": "Current runs probe",
+    "status": "completed",
+    "conclusion": "success",
     "head_sha": "a2c1ceb5ca0fc644d54b5c0f6aabc21b5d4c3582",
     "event": "push",
     "created_at": "2026-07-20T22:17:15Z",
@@ -478,25 +498,5 @@
     "event": "push",
     "created_at": "2026-07-20T16:59:23Z",
     "html_url": "https://github.com/NightVibes33/app-code-certificates/actions/runs/29761907408"
-  },
-  {
-    "id": 29761863196,
-    "name": "Apply permanent installer final fix",
-    "status": "completed",
-    "conclusion": "failure",
-    "head_sha": "2bfea8e5357489823fbc2eed33f0b65a611449f6",
-    "event": "push",
-    "created_at": "2026-07-20T16:58:44Z",
-    "html_url": "https://github.com/NightVibes33/app-code-certificates/actions/runs/29761863196"
-  },
-  {
-    "id": 29761830124,
-    "name": "Cancel conflicting tunnel removal run",
-    "status": "completed",
-    "conclusion": "success",
-    "head_sha": "fac632efd2d302a19fdee9ef71b7d7d8f9e3623a",
-    "event": "push",
-    "created_at": "2026-07-20T16:58:15Z",
-    "html_url": "https://github.com/NightVibes33/app-code-certificates/actions/runs/29761830124"
   }
 ]
