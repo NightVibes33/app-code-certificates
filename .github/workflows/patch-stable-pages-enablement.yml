@@ -1,0 +1,52 @@
+name: Patch future stable Pages deployments
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/patch-stable-pages-enablement.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Enable Pages and avoid duplicate push rebuilds
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path('.github/workflows/dopamine-main-stable-installer.yml')
+          text = path.read_text()
+
+          old_force = '          if [[ "${{ github.event_name }}" == "workflow_dispatch" || "${{ github.event_name }}" == "push" ]]; then'
+          new_force = '          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then'
+          if old_force not in text:
+              raise SystemExit('push-force condition not found')
+          text = text.replace(old_force, new_force, 1)
+
+          old_pages = '      - name: Configure GitHub Pages\n        uses: actions/configure-pages@v5\n'
+          new_pages = '      - name: Configure GitHub Pages\n        uses: actions/configure-pages@v5\n        with:\n          enablement: true\n'
+          if old_pages not in text:
+              raise SystemExit('configure-pages step not found')
+          text = text.replace(old_pages, new_pages, 1)
+
+          path.write_text(text)
+          PY
+
+          git diff --check
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add .github/workflows/dopamine-main-stable-installer.yml
+          git rm .github/workflows/patch-stable-pages-enablement.yml
+          git commit -m 'Enable stable Pages deployment for future builds'
+          git pull --rebase origin main
+          git push origin main
