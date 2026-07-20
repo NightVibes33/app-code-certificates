@@ -1,0 +1,47 @@
+name: Enable and deploy stable Dopamine installer
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/enable-and-deploy-stable-installer.yml"
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: github-pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout built installer site
+        uses: actions/checkout@v4
+        with:
+          ref: gh-pages
+          fetch-depth: 1
+
+      - name: Enable GitHub Pages
+        uses: actions/configure-pages@v5
+        with:
+          enablement: true
+
+      - name: Remove repository metadata
+        shell: bash
+        run: rm -rf .git
+
+      - name: Upload built installer site
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: .
+
+      - name: Deploy built stable installer
+        id: deployment
+        uses: actions/deploy-pages@v4
