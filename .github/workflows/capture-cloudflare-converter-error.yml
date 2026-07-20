@@ -1,0 +1,33 @@
+name: Capture Cloudflare converter error
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/capture-cloudflare-converter-error.yml"
+
+permissions:
+  actions: read
+  contents: write
+
+jobs:
+  capture:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Capture converter error tail
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euxo pipefail
+          gh api "repos/${GITHUB_REPOSITORY}/actions/jobs/88453163291/logs" > converter-job.log
+          tail -n 60 converter-job.log > cloudflare-converter-error.txt
+          cat cloudflare-converter-error.txt
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add cloudflare-converter-error.txt
+          git commit -m 'Record Cloudflare converter error'
+          git pull --rebase origin main
+          git push origin main
