@@ -15,17 +15,20 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - name: Capture failed signing job tail
         env:
           GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
           set -euo pipefail
-          gh api "repos/${GITHUB_REPOSITORY}/actions/jobs/88416930600/logs" > fast-sign-job.log
-          tail -n 160 fast-sign-job.log > fast-sign-error-tail.txt
+          gh api "repos/${GITHUB_REPOSITORY}/actions/jobs/88418748386/logs" > fast-sign-job.log
+          tail -n 180 fast-sign-job.log > fast-sign-error-tail.txt
           cat fast-sign-error-tail.txt
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
           git add fast-sign-error-tail.txt
-          git commit -m 'Record fast signing error tail'
-          git push
+          git commit -m 'Record corrected fast installer failure'
+          git pull --rebase origin main
+          git push origin main
