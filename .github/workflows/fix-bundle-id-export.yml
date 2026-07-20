@@ -1,0 +1,49 @@
+name: Fix signing bundle ID export
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/fix-bundle-id-export.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Fix same-step bundle ID propagation
+        shell: bash
+        run: |
+          set -euxo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+
+          paths = [
+              Path('.github/workflows/dopamine-permanent-installer.yml'),
+              Path('.github/workflows/fast-cloudflare-installer.yml'),
+          ]
+
+          old_blocks = [
+              """          with open(os.environ['GITHUB_ENV'], 'a') as env:\n              env.write(f'BUNDLE_ID={bundle_id}\\n')\n          PY\n\n          KEYCHAIN=""",
+          ]
+          replacement = """          Path('signing-work/bundle-id.txt').write_text(bundle_id)\n          PY\n\n          BUNDLE_ID=\"$(cat signing-work/bundle-id.txt)\"\n          export BUNDLE_ID\n          KEYCHAIN="""
+
+          for path in paths:
+              text = path.read_text()
+              old = old_blocks[0]
+              if old not in text:
+                  raise SystemExit(f'Expected bundle ID block not found in {path}')
+              path.write_text(text.replace(old, replacement, 1))
+          PY
+          git diff --check
+          git diff -- .github/workflows/dopamine-permanent-installer.yml .github/workflows/fast-cloudflare-installer.yml
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add .github/workflows/dopamine-permanent-installer.yml .github/workflows/fast-cloudflare-installer.yml
+          git commit -m 'Fix same-step bundle ID propagation'
+          git push
