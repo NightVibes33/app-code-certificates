@@ -31,4 +31,4 @@ jobs:
           git pull --rebase origin main
           git push origin main
 
-# Profile registration installer status
+# Registration environment fix status
