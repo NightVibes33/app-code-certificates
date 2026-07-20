@@ -1,0 +1,177 @@
+name: Convert newest main installer to Cloudflare only
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/convert-main-installer-to-cloudflare.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  convert:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Replace Pages publisher with Cloudflare tunnel
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path('.github/workflows/dopamine-main-stable-installer.yml')
+          text = path.read_text()
+          text = text.replace('name: Dopamine main stable installer', 'name: Dopamine main Cloudflare installer', 1)
+          text = text.replace('  pages: write\n', '')
+          text = text.replace('  id-token: write\n', '')
+          text = text.replace('  PAGES_BASE_URL: https://nightvibes33.github.io/app-code-certificates\n', '')
+
+          old_state = '''          git fetch origin gh-pages:refs/remotes/origin/gh-pages 2>/dev/null || true
+          PUBLISHED_SHA="$(git show origin/gh-pages:complete/latest/source-sha.txt 2>/dev/null | tr -d '\\r\\n' || true)"
+'''
+          new_state = '''          PUBLISHED_SHA="$(cat cloudflare-source-sha.txt 2>/dev/null | tr -d '\\r\\n' || true)"
+'''
+          if old_state not in text:
+              raise SystemExit('Pages source-state block not found')
+          text = text.replace(old_state, new_state, 1)
+
+          marker = '\n  publish:\n'
+          if marker not in text:
+              raise SystemExit('Pages publish job not found')
+          text = text.split(marker, 1)[0]
+
+          suffix = r'''
+
+  tunnel:
+    needs:
+      - check
+      - build-sign
+    if: needs.check.outputs.changed == 'true' && needs.build-sign.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    steps:
+      - name: Checkout installer generator
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Download newest signed IPA
+        uses: actions/download-artifact@v4
+        with:
+          name: dopamine-main-signed-site-input
+          path: output
+
+      - name: Start newest Cloudflare complete installer
+        id: tunnel
+        shell: bash
+        run: |
+          set -euxo pipefail
+          test -s output/Dopamine-iPad5-newest-signed.ipa
+          test -s output/metadata.json
+          rm -rf site
+          mkdir -p site/complete
+
+          RUNNER_TRACKING_ID="" nohup python3 -m http.server 8080 --directory site > http-server.log 2>&1 &
+          echo "$!" > server.pid
+
+          curl -fsSL https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64 -o cloudflared
+          chmod +x cloudflared
+          RUNNER_TRACKING_ID="" nohup ./cloudflared tunnel --url http://127.0.0.1:8080 --no-autoupdate > cloudflared.log 2>&1 &
+          echo "$!" > tunnel.pid
+
+          URL=""
+          for _ in $(seq 1 90); do
+            URL="$(grep -Eo 'https://[-a-z0-9]+\.trycloudflare\.com' cloudflared.log | head -n 1 || true)"
+            [[ -n "$URL" ]] && break
+            sleep 2
+          done
+          if [[ -z "$URL" ]]; then
+            cat cloudflared.log
+            exit 1
+          fi
+
+          RESULT="$(python3 tools/build_dopamine_site.py \
+            --site site/complete \
+            --ipa output/Dopamine-iPad5-newest-signed.ipa \
+            --metadata output/metadata.json \
+            --base-url "$URL/complete")"
+
+          INSTALLER_URL="$URL/complete/"
+          IPA_URL="$(jq -r .ipa_url <<<"$RESULT")"
+          REGISTRATION_URL="$(jq -r .registration_url <<<"$RESULT")"
+          SOURCE_SHA="$(jq -r .source_sha output/metadata.json)"
+          printf '%s\n' "$INSTALLER_URL" > cloudflare-installer-url.txt
+          printf '%s\n' "$IPA_URL" > cloudflare-ipa-url.txt
+          printf '%s\n' "$REGISTRATION_URL" > cloudflare-registration-url.txt
+          printf '%s\n' "$SOURCE_SHA" > cloudflare-source-sha.txt
+          echo "installer_url=$INSTALLER_URL" >> "$GITHUB_OUTPUT"
+          echo "ipa_url=$IPA_URL" >> "$GITHUB_OUTPUT"
+          echo "::notice title=Newest Dopamine Cloudflare installer::$INSTALLER_URL"
+
+      - name: Record current Cloudflare URL
+        shell: bash
+        run: |
+          set -euxo pipefail
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add cloudflare-installer-url.txt cloudflare-ipa-url.txt cloudflare-registration-url.txt cloudflare-source-sha.txt
+          git commit -m "Record newest Dopamine Cloudflare installer"
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase origin main || true
+            if git push origin HEAD:main; then
+              exit 0
+            fi
+            sleep $((attempt * 2))
+          done
+          exit 1
+
+      - name: Upload Cloudflare installer links
+        uses: actions/upload-artifact@v4
+        with:
+          name: Dopamine-main-Cloudflare-installer-links
+          path: |
+            cloudflare-installer-url.txt
+            cloudflare-ipa-url.txt
+            cloudflare-registration-url.txt
+            cloudflare-source-sha.txt
+          retention-days: 2
+
+      - name: Keep newest installer online
+        shell: bash
+        run: |
+          set -euxo pipefail
+          SERVER_PID="$(cat server.pid)"
+          TUNNEL_PID="$(cat tunnel.pid)"
+          while kill -0 "$SERVER_PID" 2>/dev/null && kill -0 "$TUNNEL_PID" 2>/dev/null; do
+            sleep 30
+          done
+          cat http-server.log || true
+          cat cloudflared.log || true
+          exit 1
+'''
+          path.write_text(text.rstrip() + suffix)
+          PY
+
+          git diff --check
+          grep -q 'name: Dopamine main Cloudflare installer' .github/workflows/dopamine-main-stable-installer.yml
+          ! grep -q 'GitHub Pages\|gh-pages\|deploy-pages\|PAGES_BASE_URL' .github/workflows/dopamine-main-stable-installer.yml
+          grep -q 'trycloudflare.com' .github/workflows/dopamine-main-stable-installer.yml
+
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add .github/workflows/dopamine-main-stable-installer.yml
+          git rm .github/workflows/convert-main-installer-to-cloudflare.yml
+          git commit -m 'Use Cloudflare only for newest Dopamine installer'
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase origin main || true
+            if git push origin HEAD:main; then
+              exit 0
+            fi
+            sleep $((attempt * 2))
+          done
+          exit 1
