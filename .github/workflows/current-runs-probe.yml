@@ -31,4 +31,4 @@ jobs:
           git pull --rebase origin main
           git push origin main
 
-# Final Cloudflare publisher run refresh
+# Profile registration installer status
