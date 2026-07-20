@@ -27,4 +27,4 @@ jobs:
           git commit -m 'Refresh current workflow runs'
           git push
 
-# refresh fast restored installer
+# refresh bundle export fix
