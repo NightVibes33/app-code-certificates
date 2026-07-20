@@ -21,7 +21,7 @@ jobs:
         run: |
           set -euo pipefail
           gh api "repos/${GITHUB_REPOSITORY}/actions/runs?per_page=100" \
-            --jq '.workflow_runs[] | select(.name == "Fix bundle ID and remove temporary tunnel" and (.status == "queued" or .status == "pending" or .status == "in_progress")) | .id' |
+            --jq '.workflow_runs[] | select((.name == "Fix bundle ID and remove temporary tunnel" or .name == "Apply permanent installer final fix") and (.status == "queued" or .status == "pending" or .status == "in_progress")) | .id' |
           while read -r run_id; do
             [[ -z "$run_id" ]] && continue
             gh api --method POST "repos/${GITHUB_REPOSITORY}/actions/runs/${run_id}/cancel" || true
