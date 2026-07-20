@@ -22,12 +22,12 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euxo pipefail
-          gh api "repos/${GITHUB_REPOSITORY}/actions/jobs/88453163291/logs" > converter-job.log
-          tail -n 60 converter-job.log > cloudflare-converter-error.txt
+          gh api "repos/${GITHUB_REPOSITORY}/actions/jobs/88453782770/logs" > converter-job.log
+          tail -n 90 converter-job.log > cloudflare-converter-error.txt
           cat cloudflare-converter-error.txt
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
           git add cloudflare-converter-error.txt
-          git commit -m 'Record Cloudflare converter error'
+          git commit -m 'Record Cloudflare commit error'
           git pull --rebase origin main
           git push origin main
