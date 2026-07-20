@@ -31,4 +31,4 @@ jobs:
           git pull --rebase origin main
           git push origin main
 
-# Cloudflare-only conversion status refresh
+# Verify repaired Cloudflare conversion
