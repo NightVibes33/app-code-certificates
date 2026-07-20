@@ -15,13 +15,17 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh api "repos/${GITHUB_REPOSITORY}/actions/jobs/88417351085/logs" > bundle-fix.log
-          tail -n 80 bundle-fix.log > bundle-fix-error-tail.txt
+          set -euo pipefail
+          gh api "repos/${GITHUB_REPOSITORY}/actions/jobs/88418174755/logs" > bundle-fix.log
+          tail -n 120 bundle-fix.log > bundle-fix-error-tail.txt
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
           git add bundle-fix-error-tail.txt
-          git commit -m 'Record bundle export fixer error'
-          git push
+          git commit -m 'Refresh final fixer error'
+          git pull --rebase origin main
+          git push origin main
