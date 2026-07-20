@@ -1,0 +1,32 @@
+name: Permanent installer status probe
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/permanent-installer-status-probe.yml"
+
+permissions:
+  actions: read
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Query permanent installer run
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh api "repos/${GITHUB_REPOSITORY}/actions/runs?per_page=50" > all-runs.json
+          jq '[.workflow_runs[] | select(.name == "Dopamine permanent installer")][0] // {error:"run not found"}' all-runs.json > permanent-installer-status.json
+          cat permanent-installer-status.json
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add permanent-installer-status.json
+          git commit -m 'Record permanent installer run status'
+          git push
