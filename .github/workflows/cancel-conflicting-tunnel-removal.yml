@@ -1,0 +1,28 @@
+name: Cancel conflicting tunnel removal run
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/cancel-conflicting-tunnel-removal.yml"
+
+permissions:
+  actions: write
+  contents: read
+
+jobs:
+  cancel:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Cancel active conflicting runs
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh api "repos/${GITHUB_REPOSITORY}/actions/runs?per_page=100" \
+            --jq '.workflow_runs[] | select(.name == "Fix bundle ID and remove temporary tunnel" and (.status == "queued" or .status == "pending" or .status == "in_progress")) | .id' |
+          while read -r run_id; do
+            [[ -z "$run_id" ]] && continue
+            gh api --method POST "repos/${GITHUB_REPOSITORY}/actions/runs/${run_id}/cancel" || true
+          done
