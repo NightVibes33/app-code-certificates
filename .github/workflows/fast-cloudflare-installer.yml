@@ -17,6 +17,8 @@ jobs:
     steps:
       - name: Checkout signing repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Download verified StockBaseline IPA
         uses: actions/download-artifact@v4
@@ -60,7 +62,7 @@ jobs:
 
           security cms -D -i signing-work/profile.mobileprovision > signing-work/profile.plist
           python3 - <<'PY'
-          import os, plistlib
+          import plistlib
           from pathlib import Path
           profile = plistlib.loads(Path('signing-work/profile.plist').read_bytes())
           entitlements = profile['Entitlements']
@@ -68,10 +70,11 @@ jobs:
           Path('signing-work/entitlements.plist').write_bytes(
               plistlib.dumps(entitlements, fmt=plistlib.FMT_XML, sort_keys=False)
           )
-          with open(os.environ['GITHUB_ENV'], 'a') as env:
-              env.write(f'BUNDLE_ID={bundle_id}\n')
+          Path('signing-work/bundle-id.txt').write_text(bundle_id)
           PY
 
+          BUNDLE_ID="$(cat signing-work/bundle-id.txt)"
+          export BUNDLE_ID
           KEYCHAIN="$RUNNER_TEMP/dopamine-fast-signing.keychain-db"
           KEYCHAIN_PASSWORD="$(python3 -c 'import secrets; print(secrets.token_urlsafe(24))')"
           security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
@@ -110,6 +113,7 @@ jobs:
             --entitlements signing-work/entitlements.plist --generate-entitlement-der "$APP"
           codesign --verify --deep --strict --verbose=2 "$APP"
           (cd signing-work/unpacked && zip -qry "$GITHUB_WORKSPACE/output/Dopamine-iPad5-StockBaseline-signed.ipa" Payload)
+          test -s output/Dopamine-iPad5-StockBaseline-signed.ipa
 
           python3 - <<PY
           import json
@@ -167,10 +171,16 @@ jobs:
           set -euxo pipefail
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
-          git pull --rebase origin main
           git add cloudflare-installer-url.txt cloudflare-registration-url.txt cloudflare-ipa-url.txt
           git commit -m 'Record restored Cloudflare installer URL'
-          git push
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase origin main
+            if git push origin main; then
+              exit 0
+            fi
+            sleep 2
+          done
+          exit 1
 
       - name: Upload URL artifact
         uses: actions/upload-artifact@v4
