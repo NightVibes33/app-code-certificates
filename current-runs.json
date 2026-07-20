@@ -1,9 +1,49 @@
 [
   {
-    "id": 29760549613,
+    "id": 29760731778,
     "name": "Current runs probe",
     "status": "in_progress",
     "conclusion": null,
+    "head_sha": "38107ea2c5396493ea3b8d3b327f4d2e331b4501",
+    "event": "push",
+    "created_at": "2026-07-20T16:42:21Z",
+    "html_url": "https://github.com/NightVibes33/app-code-certificates/actions/runs/29760731778"
+  },
+  {
+    "id": 29760685498,
+    "name": "Permanent installer status probe",
+    "status": "completed",
+    "conclusion": "success",
+    "head_sha": "dd46db84e921f428b19f09d8c0a8ecac94d60983",
+    "event": "push",
+    "created_at": "2026-07-20T16:41:41Z",
+    "html_url": "https://github.com/NightVibes33/app-code-certificates/actions/runs/29760685498"
+  },
+  {
+    "id": 29760648007,
+    "name": "Dopamine permanent installer",
+    "status": "pending",
+    "conclusion": null,
+    "head_sha": "4bbab7eb970915c55f52d47e25f855c92d248343",
+    "event": "push",
+    "created_at": "2026-07-20T16:41:06Z",
+    "html_url": "https://github.com/NightVibes33/app-code-certificates/actions/runs/29760648007"
+  },
+  {
+    "id": 29760646585,
+    "name": "Fix permanent installer signing v2",
+    "status": "completed",
+    "conclusion": "failure",
+    "head_sha": "57fa640e25a6a1db7fcea2965cd2e5dcb780a1fa",
+    "event": "push",
+    "created_at": "2026-07-20T16:41:05Z",
+    "html_url": "https://github.com/NightVibes33/app-code-certificates/actions/runs/29760646585"
+  },
+  {
+    "id": 29760549613,
+    "name": "Current runs probe",
+    "status": "completed",
+    "conclusion": "success",
     "head_sha": "14a88a0e32a37415c7058a6c5f171715c1ed4ca2",
     "event": "push",
     "created_at": "2026-07-20T16:39:41Z",
@@ -22,7 +62,7 @@
   {
     "id": 29760371973,
     "name": "Dopamine permanent installer",
-    "status": "pending",
+    "status": "in_progress",
     "conclusion": null,
     "head_sha": "3dd9e710d359f247361897e5dc6530da60e6b64f",
     "event": "push",
@@ -82,8 +122,8 @@
   {
     "id": 29759261879,
     "name": "Dopamine permanent installer",
-    "status": "in_progress",
-    "conclusion": null,
+    "status": "completed",
+    "conclusion": "failure",
     "head_sha": "54e9fa3941d00edaed37a942e35baa02d3eb9393",
     "event": "push",
     "created_at": "2026-07-20T16:21:44Z",
