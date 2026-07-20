@@ -31,4 +31,4 @@ jobs:
           git pull --rebase origin main
           git push origin main
 
-# corrected fast installer refresh
+# keychain-fixed installer refresh
