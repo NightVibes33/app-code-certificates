@@ -1,9 +1,69 @@
 [
   {
-    "id": 29772971892,
+    "id": 29782123324,
     "name": "Current runs probe",
     "status": "in_progress",
     "conclusion": null,
+    "head_sha": "92319303f7835a3db2af611d174413792739046f",
+    "event": "push",
+    "created_at": "2026-07-20T21:56:47Z",
+    "html_url": "https://github.com/NightVibes33/app-code-certificates/actions/runs/29782123324"
+  },
+  {
+    "id": 29782102149,
+    "name": "Dopamine profile registration OTA installer",
+    "status": "in_progress",
+    "conclusion": null,
+    "head_sha": "4f13c9596f3500cff12f15db8bf40e53ee95aca5",
+    "event": "push",
+    "created_at": "2026-07-20T21:56:27Z",
+    "html_url": "https://github.com/NightVibes33/app-code-certificates/actions/runs/29782102149"
+  },
+  {
+    "id": 29781905878,
+    "name": "Dopamine main Cloudflare installer",
+    "status": "in_progress",
+    "conclusion": null,
+    "head_sha": "028152c984c13dedd5c09ef48ef3da401fc72b87",
+    "event": "push",
+    "created_at": "2026-07-20T21:53:23Z",
+    "html_url": "https://github.com/NightVibes33/app-code-certificates/actions/runs/29781905878"
+  },
+  {
+    "id": 29781788769,
+    "name": "Dopamine main Cloudflare installer",
+    "status": "completed",
+    "conclusion": "success",
+    "head_sha": "b9bdfba1520997d28fb77146bcb162e132b0a93a",
+    "event": "schedule",
+    "created_at": "2026-07-20T21:51:33Z",
+    "html_url": "https://github.com/NightVibes33/app-code-certificates/actions/runs/29781788769"
+  },
+  {
+    "id": 29779751071,
+    "name": "Dopamine main Cloudflare installer",
+    "status": "completed",
+    "conclusion": "cancelled",
+    "head_sha": "6101ef494baa0e0dee4985086e896459f02b30ee",
+    "event": "schedule",
+    "created_at": "2026-07-20T21:19:50Z",
+    "html_url": "https://github.com/NightVibes33/app-code-certificates/actions/runs/29779751071"
+  },
+  {
+    "id": 29777206871,
+    "name": "Dopamine main Cloudflare installer",
+    "status": "completed",
+    "conclusion": "success",
+    "head_sha": "6101ef494baa0e0dee4985086e896459f02b30ee",
+    "event": "schedule",
+    "created_at": "2026-07-20T20:42:01Z",
+    "html_url": "https://github.com/NightVibes33/app-code-certificates/actions/runs/29777206871"
+  },
+  {
+    "id": 29772971892,
+    "name": "Current runs probe",
+    "status": "completed",
+    "conclusion": "success",
     "head_sha": "778eb550c46f67831ae11c8ab472755b52ec0777",
     "event": "push",
     "created_at": "2026-07-20T19:40:50Z",
@@ -22,8 +82,8 @@
   {
     "id": 29772879231,
     "name": "Dopamine main Cloudflare installer",
-    "status": "in_progress",
-    "conclusion": null,
+    "status": "completed",
+    "conclusion": "cancelled",
     "head_sha": "3689cda81c20bfc5804647b17bbb9003a46e81cc",
     "event": "push",
     "created_at": "2026-07-20T19:39:28Z",
@@ -438,65 +498,5 @@
     "event": "push",
     "created_at": "2026-07-20T16:55:08Z",
     "html_url": "https://github.com/NightVibes33/app-code-certificates/actions/runs/29761616089"
-  },
-  {
-    "id": 29761556938,
-    "name": "Fast signing error probe",
-    "status": "completed",
-    "conclusion": "success",
-    "head_sha": "786e19622395362509d51a28eb7795c2e0a41bbd",
-    "event": "push",
-    "created_at": "2026-07-20T16:54:17Z",
-    "html_url": "https://github.com/NightVibes33/app-code-certificates/actions/runs/29761556938"
-  },
-  {
-    "id": 29761501851,
-    "name": "Current runs probe",
-    "status": "completed",
-    "conclusion": "success",
-    "head_sha": "10cf1c9f602e4b2d361b54e66371055f428a3996",
-    "event": "push",
-    "created_at": "2026-07-20T16:53:28Z",
-    "html_url": "https://github.com/NightVibes33/app-code-certificates/actions/runs/29761501851"
-  },
-  {
-    "id": 29761489505,
-    "name": "Fast restored Cloudflare installer",
-    "status": "completed",
-    "conclusion": "failure",
-    "head_sha": "da27123ef4e7481f17f8e6a60dbad0feaa8057de",
-    "event": "push",
-    "created_at": "2026-07-20T16:53:17Z",
-    "html_url": "https://github.com/NightVibes33/app-code-certificates/actions/runs/29761489505"
-  },
-  {
-    "id": 29760882608,
-    "name": "Extract Cloudflare installer URL",
-    "status": "completed",
-    "conclusion": "failure",
-    "head_sha": "c34b7501d4be069d4d5645c35c601b1c9e63404a",
-    "event": "push",
-    "created_at": "2026-07-20T16:44:29Z",
-    "html_url": "https://github.com/NightVibes33/app-code-certificates/actions/runs/29760882608"
-  },
-  {
-    "id": 29760782823,
-    "name": "Cancel stale installer run",
-    "status": "completed",
-    "conclusion": "success",
-    "head_sha": "0cf82a50b6879ef3eb0d23cb6f141d92200c4d89",
-    "event": "push",
-    "created_at": "2026-07-20T16:43:06Z",
-    "html_url": "https://github.com/NightVibes33/app-code-certificates/actions/runs/29760782823"
-  },
-  {
-    "id": 29760768546,
-    "name": "Cancel obsolete installer build",
-    "status": "completed",
-    "conclusion": "success",
-    "head_sha": "9ac6bf0e40fd09e511450719dd5c7d3838ec685d",
-    "event": "push",
-    "created_at": "2026-07-20T16:42:54Z",
-    "html_url": "https://github.com/NightVibes33/app-code-certificates/actions/runs/29760768546"
   }
 ]
