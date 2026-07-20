@@ -1,0 +1,33 @@
+name: Capture registration start failure
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/capture-registration-start-error.yml"
+
+permissions:
+  actions: read
+  contents: write
+
+jobs:
+  capture:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Capture failed tunnel log tail
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euxo pipefail
+          gh api "repos/${GITHUB_REPOSITORY}/actions/jobs/88490409728/logs" > registration-job.log
+          tail -n 100 registration-job.log > registration-start-error.txt
+          CONTENT="$(base64 < registration-start-error.txt | tr -d '\n')"
+          PATH_NAME='registration-start-error.txt'
+          SHA="$(gh api "repos/${GITHUB_REPOSITORY}/contents/${PATH_NAME}?ref=main" --jq .sha 2>/dev/null || true)"
+          if [[ -n "$SHA" ]]; then
+            gh api --method PUT "repos/${GITHUB_REPOSITORY}/contents/${PATH_NAME}" -f message='Record registration start failure' -f content="$CONTENT" -f branch=main -f sha="$SHA" >/dev/null
+          else
+            gh api --method PUT "repos/${GITHUB_REPOSITORY}/contents/${PATH_NAME}" -f message='Record registration start failure' -f content="$CONTENT" -f branch=main >/dev/null
+          fi
