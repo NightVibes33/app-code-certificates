@@ -31,4 +31,4 @@ jobs:
           git pull --rebase origin main
           git push origin main
 
-# Verify repaired Cloudflare conversion
+# Check apply-cloudflare runner status
