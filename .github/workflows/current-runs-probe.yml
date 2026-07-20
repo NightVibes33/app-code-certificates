@@ -31,4 +31,4 @@ jobs:
           git pull --rebase origin main
           git push origin main
 
-# Race-safe registration patch status
+# Fixed profile registration tunnel status
