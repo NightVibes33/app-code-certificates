@@ -30,3 +30,5 @@ jobs:
           git add permanent-installer-status.json
           git commit -m 'Record permanent installer run status'
           git push
+
+# status refresh 2026-07-20-restored-cloudflare
