@@ -1,0 +1,41 @@
+name: Patch fast installer keychain search
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/patch-fast-keychain.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Add temporary keychain to codesign search list
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path('.github/workflows/fast-cloudflare-installer.yml')
+          text = path.read_text()
+          needle = '          security set-key-partition-list -S apple-tool:,apple: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN"\n'
+          addition = needle + '          security list-keychains -d user -s "$KEYCHAIN"\n'
+          if 'security list-keychains -d user -s "$KEYCHAIN"' not in text:
+              if needle not in text:
+                  raise SystemExit('key partition line not found')
+              text = text.replace(needle, addition, 1)
+          path.write_text(text)
+          PY
+          SHA="$(gh api "repos/${GITHUB_REPOSITORY}/contents/.github/workflows/fast-cloudflare-installer.yml?ref=main" --jq .sha)"
+          CONTENT="$(base64 -w 0 .github/workflows/fast-cloudflare-installer.yml)"
+          gh api --method PUT "repos/${GITHUB_REPOSITORY}/contents/.github/workflows/fast-cloudflare-installer.yml" \
+            -f message='Add signing keychain to codesign search list' \
+            -f content="$CONTENT" \
+            -f sha="$SHA" \
+            -f branch=main
