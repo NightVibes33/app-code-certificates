@@ -1,0 +1,84 @@
+name: Fix permanent installer signing v2
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/fix-permanent-installer-signing-v2.yml"
+
+permissions:
+  actions: write
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Patch signing step by location
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path('.github/workflows/dopamine-permanent-installer.yml')
+          lines = path.read_text().splitlines()
+          step = next(i for i, line in enumerate(lines) if 'name: Decode signing assets and sign IPA' in line)
+          start = next(i for i in range(step, len(lines)) if "python3 - <<'PY'" in lines[i])
+          end = next(i for i in range(start + 1, len(lines)) if lines[i].strip() == 'PY')
+
+          replacement = """          python3 - <<'PY'
+          import base64
+          import hashlib
+          from pathlib import Path
+
+          def decode_verified(encoded: str, expected_sha256: str) -> bytes:
+              compact = ''.join(encoded.split())
+              decoded = base64.b64decode(compact, validate=True)
+              actual = hashlib.sha256(decoded).hexdigest()
+              if actual != expected_sha256:
+                  raise RuntimeError(f'signing asset hash mismatch: {actual}')
+              return decoded
+
+          p12_b64 = Path('dopamine/Dopamine-Development.p12.b64').read_text()
+          profile_b64 = ''.join(
+              (Path('dopamine/profile.parts') / f'{index:02d}').read_text()
+              for index in range(1, 6)
+          )
+          Path('signing-work/development.p12').write_bytes(
+              decode_verified(p12_b64, 'fb41f3b5fc0042dc7e76d60e1a38d969ebdb533d8c1cbf9f0d51a176e70ee1ea')
+          )
+          Path('signing-work/profile.mobileprovision').write_bytes(
+              decode_verified(profile_b64, 'ffd2413bfd0af85621b15781d2849c1f28f55cee7e484fbd8325d1ef9a5e7aa3')
+          )
+          PY""".splitlines()
+
+          lines[start:end + 1] = replacement
+          text = '\n'.join(lines) + '\n'
+          text = text.replace('cron: "17 * * * *"', 'cron: "*/15 * * * *"')
+          path.write_text(text)
+          PY
+
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add .github/workflows/dopamine-permanent-installer.yml
+          git rm -f .github/workflows/fix-permanent-installer-signing.yml || true
+          git rm -f .github/workflows/fix-permanent-installer-signing-v2.yml
+          git commit -m 'Fix verified profile reconstruction for permanent installer'
+          git pull --rebase origin main
+          git push
+
+      - name: Start corrected permanent installer build
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh api --method POST \
+            "repos/${GITHUB_REPOSITORY}/actions/workflows/dopamine-permanent-installer.yml/dispatches" \
+            -f ref=main
