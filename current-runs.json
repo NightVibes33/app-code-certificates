@@ -1,9 +1,69 @@
 [
   {
-    "id": 29762089466,
+    "id": 29762421791,
     "name": "Current runs probe",
     "status": "in_progress",
     "conclusion": null,
+    "head_sha": "9c21d57b83cfb609d836cb87e58dbe3b07d8044b",
+    "event": "push",
+    "created_at": "2026-07-20T17:06:55Z",
+    "html_url": "https://github.com/NightVibes33/app-code-certificates/actions/runs/29762421791"
+  },
+  {
+    "id": 29762360261,
+    "name": "Fast restored Cloudflare installer",
+    "status": "in_progress",
+    "conclusion": null,
+    "head_sha": "89a1978e4b94099bf43884cf779cd7b5d5597923",
+    "event": "push",
+    "created_at": "2026-07-20T17:06:01Z",
+    "html_url": "https://github.com/NightVibes33/app-code-certificates/actions/runs/29762360261"
+  },
+  {
+    "id": 29762283752,
+    "name": "Patch fast installer keychain search",
+    "status": "completed",
+    "conclusion": "failure",
+    "head_sha": "ec42a5c24922e90f60838f5482c879a7f92250df",
+    "event": "push",
+    "created_at": "2026-07-20T17:04:49Z",
+    "html_url": "https://github.com/NightVibes33/app-code-certificates/actions/runs/29762283752"
+  },
+  {
+    "id": 29762211625,
+    "name": "Fast signing failure direct probe",
+    "status": "completed",
+    "conclusion": "success",
+    "head_sha": "6b3fcc073186645c8186078676d11d18846089d0",
+    "event": "push",
+    "created_at": "2026-07-20T17:03:45Z",
+    "html_url": "https://github.com/NightVibes33/app-code-certificates/actions/runs/29762211625"
+  },
+  {
+    "id": 29762155156,
+    "name": "Fast signing error probe",
+    "status": "completed",
+    "conclusion": "success",
+    "head_sha": "a5f32d07a7cad0ee1159a68154bbed892aec71c4",
+    "event": "push",
+    "created_at": "2026-07-20T17:02:56Z",
+    "html_url": "https://github.com/NightVibes33/app-code-certificates/actions/runs/29762155156"
+  },
+  {
+    "id": 29762146472,
+    "name": "Prepare permanent workflow patch",
+    "status": "completed",
+    "conclusion": "success",
+    "head_sha": "73c31c50da799e54f141493db4c673aef46a3cbf",
+    "event": "push",
+    "created_at": "2026-07-20T17:02:49Z",
+    "html_url": "https://github.com/NightVibes33/app-code-certificates/actions/runs/29762146472"
+  },
+  {
+    "id": 29762089466,
+    "name": "Current runs probe",
+    "status": "completed",
+    "conclusion": "success",
     "head_sha": "c288201da00046df2bc163485da31650221f4cff",
     "event": "push",
     "created_at": "2026-07-20T17:01:59Z",
