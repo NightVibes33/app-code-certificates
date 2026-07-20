@@ -31,4 +31,4 @@ jobs:
           git pull --rebase origin main
           git push origin main
 
-# Pages enablement status refresh
+# Cloudflare-only conversion status refresh
