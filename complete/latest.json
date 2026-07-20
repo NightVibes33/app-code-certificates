@@ -1,0 +1,13 @@
+{
+  "bundle_id": "com.nightvibes33.dopamine.ipad5",
+  "version": "2.4.99",
+  "build": "20260720191805",
+  "title": "Dopamine iPad 5",
+  "source_sha": "9b0b648346c96151556214e9100ee8029f2e7d80",
+  "build_id": "20260720191805-9b0b648346",
+  "stable_url": "https://nightvibes33.github.io/app-code-certificates/complete/",
+  "unique_url": "https://nightvibes33.github.io/app-code-certificates/complete/builds/20260720191805-9b0b648346/",
+  "registration_url": "https://nightvibes33.github.io/app-code-certificates/complete/register/",
+  "ipa_url": "https://nightvibes33.github.io/app-code-certificates/complete/latest/Dopamine-iPad5-StockBaseline.ipa",
+  "manifest_url": "https://nightvibes33.github.io/app-code-certificates/complete/latest/manifest.plist"
+}
