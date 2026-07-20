@@ -26,3 +26,5 @@ jobs:
           git add current-runs.json
           git commit -m 'Refresh current workflow runs'
           git push
+
+# refresh fast restored installer
