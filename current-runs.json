@@ -1,9 +1,39 @@
 [
   {
-    "id": 29762421791,
+    "id": 29770613613,
     "name": "Current runs probe",
     "status": "in_progress",
     "conclusion": null,
+    "head_sha": "1fe7800f822091c268a77869714392a25fccf414",
+    "event": "push",
+    "created_at": "2026-07-20T19:06:26Z",
+    "html_url": "https://github.com/NightVibes33/app-code-certificates/actions/runs/29770613613"
+  },
+  {
+    "id": 29770563508,
+    "name": "Dopamine main stable installer",
+    "status": "in_progress",
+    "conclusion": null,
+    "head_sha": "d6bb7f64779cfa24fbac2b6cb536097ef7d521ae",
+    "event": "push",
+    "created_at": "2026-07-20T19:05:46Z",
+    "html_url": "https://github.com/NightVibes33/app-code-certificates/actions/runs/29770563508"
+  },
+  {
+    "id": 29767232075,
+    "name": "Dopamine permanent installer",
+    "status": "completed",
+    "conclusion": "failure",
+    "head_sha": "be7f49f8693b9d4950cfcbd60cd381cce6a73ac3",
+    "event": "schedule",
+    "created_at": "2026-07-20T18:18:59Z",
+    "html_url": "https://github.com/NightVibes33/app-code-certificates/actions/runs/29767232075"
+  },
+  {
+    "id": 29762421791,
+    "name": "Current runs probe",
+    "status": "completed",
+    "conclusion": "success",
     "head_sha": "9c21d57b83cfb609d836cb87e58dbe3b07d8044b",
     "event": "push",
     "created_at": "2026-07-20T17:06:55Z",
@@ -222,8 +252,8 @@
   {
     "id": 29760882608,
     "name": "Extract Cloudflare installer URL",
-    "status": "in_progress",
-    "conclusion": null,
+    "status": "completed",
+    "conclusion": "failure",
     "head_sha": "c34b7501d4be069d4d5645c35c601b1c9e63404a",
     "event": "push",
     "created_at": "2026-07-20T16:44:29Z",
