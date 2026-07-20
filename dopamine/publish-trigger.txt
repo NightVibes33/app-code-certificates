@@ -1,0 +1,3 @@
+Trigger permanent Dopamine installer publishing.
+Requested: 2026-07-20
+Commit source: ChatGPT GitHub connector
