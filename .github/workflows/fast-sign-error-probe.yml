@@ -1,0 +1,31 @@
+name: Fast signing error probe
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/fast-sign-error-probe.yml"
+
+permissions:
+  actions: read
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Capture failed signing job tail
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh api "repos/${GITHUB_REPOSITORY}/actions/jobs/88416930600/logs" > fast-sign-job.log
+          tail -n 160 fast-sign-job.log > fast-sign-error-tail.txt
+          cat fast-sign-error-tail.txt
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add fast-sign-error-tail.txt
+          git commit -m 'Record fast signing error tail'
+          git push
