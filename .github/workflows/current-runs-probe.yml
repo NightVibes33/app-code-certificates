@@ -31,4 +31,4 @@ jobs:
           git pull --rebase origin main
           git push origin main
 
-# race-safe refresh
+# corrected fast installer refresh
