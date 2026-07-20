@@ -15,8 +15,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
       - name: Patch registration runner
         shell: bash
@@ -26,19 +24,19 @@ jobs:
           git diff --check
           grep -q 'registration-venv/bin/python' .github/workflows/dopamine-main-stable-installer.yml
 
-      - name: Commit patch
+      - name: Publish patched workflow through GitHub API
+        env:
+          GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
           set -euxo pipefail
-          git config user.name github-actions[bot]
-          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
-          git add .github/workflows/dopamine-main-stable-installer.yml
-          git rm .github/workflows/fix-registration-venv.yml
-          git rm tools/fix_registration_venv.py
-          git commit -m 'Run registration server in a virtual environment'
+          PATH_NAME='.github/workflows/dopamine-main-stable-installer.yml'
+          CONTENT="$(base64 < "$PATH_NAME" | tr -d '\n')"
           for attempt in 1 2 3 4 5; do
-            git pull --rebase origin main || true
-            if git push origin HEAD:main; then
+            SHA="$(gh api "repos/${GITHUB_REPOSITORY}/contents/${PATH_NAME}?ref=main" --jq .sha)"
+            if gh api --method PUT "repos/${GITHUB_REPOSITORY}/contents/${PATH_NAME}" \
+              -f message='Run registration server in a virtual environment' \
+              -f content="$CONTENT" -f branch=main -f sha="$SHA" >/dev/null; then
               exit 0
             fi
             sleep $((attempt * 2))
