@@ -1,0 +1,83 @@
+name: Prepare permanent workflow patch
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/prepare-permanent-workflow-patch.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Generate corrected workflow file
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p prepared
+          python3 - <<'PY'
+          from pathlib import Path
+
+          source = Path('.github/workflows/dopamine-permanent-installer.yml')
+          lines = source.read_text().splitlines()
+
+          for index, line in enumerate(lines):
+              if line.strip().startswith('- cron:'):
+                  lines[index] = '    - cron: "*/15 * * * *"'
+                  break
+          else:
+              raise SystemExit('schedule cron line not found')
+
+          signing_step = next(i for i, line in enumerate(lines) if 'name: Decode signing assets and sign IPA' in line)
+          keychain_line = next(i for i in range(signing_step, len(lines)) if lines[i].strip().startswith('KEYCHAIN='))
+          if not any(line.strip().startswith('BUNDLE_ID=') for line in lines[signing_step:keychain_line]):
+              lines[keychain_line:keychain_line] = [
+                  '          BUNDLE_ID="$(python3 -c \'import json; print(json.load(open("signing-work/profile-data.json"))["bundle_id"])\')"',
+                  '          export BUNDLE_ID',
+                  '',
+              ]
+
+          if '  tunnel:' in lines:
+              tunnel_start = lines.index('  tunnel:')
+              publish_start = next(i for i in range(tunnel_start + 1, len(lines)) if lines[i] == '  publish:')
+              del lines[tunnel_start:publish_start]
+
+          output = Path('prepared/dopamine-permanent-installer.yml')
+          output.write_text('\n'.join(lines) + '\n')
+          PY
+
+          grep -n 'cron:' prepared/dopamine-permanent-installer.yml
+          grep -n 'BUNDLE_ID=' prepared/dopamine-permanent-installer.yml
+          ! grep -q '^  tunnel:' prepared/dopamine-permanent-installer.yml
+
+      - name: Upload exact corrected workflow
+        uses: actions/upload-artifact@v4
+        with:
+          name: permanent-installer-workflow-patch
+          path: prepared/dopamine-permanent-installer.yml
+          if-no-files-found: error
+          retention-days: 2
+
+      - name: Record artifact run ID
+        shell: bash
+        run: |
+          set -euo pipefail
+          printf '{"run_id":%s,"source_commit":"%s"}\n' "$GITHUB_RUN_ID" "$GITHUB_SHA" > prepared-workflow-run.json
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add prepared-workflow-run.json
+          git commit -m 'Record prepared permanent workflow artifact'
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase origin main
+            if git push origin main; then exit 0; fi
+            sleep $((attempt * 2))
+          done
+          exit 1
