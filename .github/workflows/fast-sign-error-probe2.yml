@@ -1,0 +1,29 @@
+name: Fast signing failure direct probe
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/fast-sign-error-probe2.yml"
+
+permissions:
+  actions: read
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Capture failed job tail through Contents API
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh api "repos/${GITHUB_REPOSITORY}/actions/jobs/88418748386/logs" > job.log
+          tail -n 180 job.log > tail.txt
+          CONTENT="$(base64 -w 0 tail.txt)"
+          gh api --method PUT "repos/${GITHUB_REPOSITORY}/contents/fast-sign-error-tail-88418748386.txt" \
+            -f message='Record fast signing failure 88418748386' \
+            -f content="$CONTENT" \
+            -f branch=main
