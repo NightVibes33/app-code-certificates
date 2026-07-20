@@ -1,9 +1,49 @@
 [
   {
-    "id": 29761501851,
+    "id": 29761659512,
     "name": "Current runs probe",
     "status": "in_progress",
     "conclusion": null,
+    "head_sha": "f86718704e7fce3eb3af843e052747e5ed5c2b9a",
+    "event": "push",
+    "created_at": "2026-07-20T16:55:44Z",
+    "html_url": "https://github.com/NightVibes33/app-code-certificates/actions/runs/29761659512"
+  },
+  {
+    "id": 29761626853,
+    "name": "Signing error probe",
+    "status": "completed",
+    "conclusion": "success",
+    "head_sha": "fb52b736995f9df41225d05aa6a38c41e6569d41",
+    "event": "push",
+    "created_at": "2026-07-20T16:55:16Z",
+    "html_url": "https://github.com/NightVibes33/app-code-certificates/actions/runs/29761626853"
+  },
+  {
+    "id": 29761616089,
+    "name": "Fix signing bundle ID export",
+    "status": "completed",
+    "conclusion": "failure",
+    "head_sha": "7e0eea3050805c643a8e5157a0958717ef0088ba",
+    "event": "push",
+    "created_at": "2026-07-20T16:55:08Z",
+    "html_url": "https://github.com/NightVibes33/app-code-certificates/actions/runs/29761616089"
+  },
+  {
+    "id": 29761556938,
+    "name": "Fast signing error probe",
+    "status": "completed",
+    "conclusion": "success",
+    "head_sha": "786e19622395362509d51a28eb7795c2e0a41bbd",
+    "event": "push",
+    "created_at": "2026-07-20T16:54:17Z",
+    "html_url": "https://github.com/NightVibes33/app-code-certificates/actions/runs/29761556938"
+  },
+  {
+    "id": 29761501851,
+    "name": "Current runs probe",
+    "status": "completed",
+    "conclusion": "success",
     "head_sha": "10cf1c9f602e4b2d361b54e66371055f428a3996",
     "event": "push",
     "created_at": "2026-07-20T16:53:28Z",
@@ -12,8 +52,8 @@
   {
     "id": 29761489505,
     "name": "Fast restored Cloudflare installer",
-    "status": "in_progress",
-    "conclusion": null,
+    "status": "completed",
+    "conclusion": "failure",
     "head_sha": "da27123ef4e7481f17f8e6a60dbad0feaa8057de",
     "event": "push",
     "created_at": "2026-07-20T16:53:17Z",
@@ -72,8 +112,8 @@
   {
     "id": 29760648007,
     "name": "Dopamine permanent installer",
-    "status": "in_progress",
-    "conclusion": null,
+    "status": "completed",
+    "conclusion": "failure",
     "head_sha": "4bbab7eb970915c55f52d47e25f855c92d248343",
     "event": "push",
     "created_at": "2026-07-20T16:41:06Z",
