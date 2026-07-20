@@ -18,27 +18,29 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Convert updater to Cloudflare only
-        run: |
-          set -euxo pipefail
-          sed -i "s/if 'trycloudflare.com' not in result:/if 'trycloudflare' not in result:/" tools/convert_main_installer_to_cloudflare.py
-          python3 tools/convert_main_installer_to_cloudflare.py
-          git diff --check
-          grep -q 'name: Dopamine main Cloudflare installer' .github/workflows/dopamine-main-stable-installer.yml
-          ! grep -q 'GitHub Pages\|gh-pages\|deploy-pages\|PAGES_BASE_URL' .github/workflows/dopamine-main-stable-installer.yml
-          grep -q 'trycloudflare' .github/workflows/dopamine-main-stable-installer.yml
-
-      - name: Commit Cloudflare-only updater
+      - name: Atomically convert updater to Cloudflare only
+        shell: bash
         run: |
           set -euxo pipefail
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
-          git add .github/workflows/dopamine-main-stable-installer.yml
-          git rm .github/workflows/apply-cloudflare-only-installer.yml
-          git rm tools/convert_main_installer_to_cloudflare.py
-          git commit -m 'Use Cloudflare only for newest Dopamine installer'
+
           for attempt in 1 2 3 4 5; do
-            git pull --rebase origin main || true
+            git fetch origin main
+            git reset --hard origin/main
+
+            sed -i "s/if 'trycloudflare.com' not in result:/if 'trycloudflare' not in result:/" tools/convert_main_installer_to_cloudflare.py
+            python3 tools/convert_main_installer_to_cloudflare.py
+            git diff --check
+            grep -q 'name: Dopamine main Cloudflare installer' .github/workflows/dopamine-main-stable-installer.yml
+            ! grep -q 'GitHub Pages\|gh-pages\|deploy-pages\|PAGES_BASE_URL' .github/workflows/dopamine-main-stable-installer.yml
+            grep -q 'trycloudflare' .github/workflows/dopamine-main-stable-installer.yml
+
+            git add .github/workflows/dopamine-main-stable-installer.yml
+            git rm .github/workflows/apply-cloudflare-only-installer.yml
+            git rm tools/convert_main_installer_to_cloudflare.py
+            git commit -m 'Use Cloudflare only for newest Dopamine installer'
+
             if git push origin HEAD:main; then
               exit 0
             fi
