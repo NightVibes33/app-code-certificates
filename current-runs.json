@@ -1,9 +1,39 @@
 [
   {
-    "id": 29771970745,
+    "id": 29772156545,
     "name": "Current runs probe",
     "status": "in_progress",
     "conclusion": null,
+    "head_sha": "ce0068d68da4d64fa0b1b5e0ad6be98ef2b3ce2a",
+    "event": "push",
+    "created_at": "2026-07-20T19:28:53Z",
+    "html_url": "https://github.com/NightVibes33/app-code-certificates/actions/runs/29772156545"
+  },
+  {
+    "id": 29772154302,
+    "name": ".github/workflows/convert-main-installer-to-cloudflare.yml",
+    "status": "completed",
+    "conclusion": "failure",
+    "head_sha": "ce0068d68da4d64fa0b1b5e0ad6be98ef2b3ce2a",
+    "event": "push",
+    "created_at": "2026-07-20T19:28:51Z",
+    "html_url": "https://github.com/NightVibes33/app-code-certificates/actions/runs/29772154302"
+  },
+  {
+    "id": 29772102068,
+    "name": ".github/workflows/convert-main-installer-to-cloudflare.yml",
+    "status": "completed",
+    "conclusion": "failure",
+    "head_sha": "72344e4ef8c9b8f740cb33bdaccc82ee5c5afabe",
+    "event": "push",
+    "created_at": "2026-07-20T19:28:06Z",
+    "html_url": "https://github.com/NightVibes33/app-code-certificates/actions/runs/29772102068"
+  },
+  {
+    "id": 29771970745,
+    "name": "Current runs probe",
+    "status": "completed",
+    "conclusion": "success",
     "head_sha": "ce01e2b9af0c3fc24175a7b7f714044ff9a9ab7d",
     "event": "push",
     "created_at": "2026-07-20T19:26:08Z",
@@ -468,35 +498,5 @@
     "event": "push",
     "created_at": "2026-07-20T16:33:48Z",
     "html_url": "https://github.com/NightVibes33/app-code-certificates/actions/runs/29760135061"
-  },
-  {
-    "id": 29759892961,
-    "name": "Signing error probe",
-    "status": "completed",
-    "conclusion": "success",
-    "head_sha": "0a3d05a89b26510fe8b1356a1cec1ceede03c9a7",
-    "event": "push",
-    "created_at": "2026-07-20T16:30:30Z",
-    "html_url": "https://github.com/NightVibes33/app-code-certificates/actions/runs/29759892961"
-  },
-  {
-    "id": 29759261879,
-    "name": "Dopamine permanent installer",
-    "status": "completed",
-    "conclusion": "failure",
-    "head_sha": "54e9fa3941d00edaed37a942e35baa02d3eb9393",
-    "event": "push",
-    "created_at": "2026-07-20T16:21:44Z",
-    "html_url": "https://github.com/NightVibes33/app-code-certificates/actions/runs/29759261879"
-  },
-  {
-    "id": 29759162581,
-    "name": "Dopamine permanent installer",
-    "status": "completed",
-    "conclusion": "cancelled",
-    "head_sha": "5ccd139f2b0846501c1fc5acd516e85b94f67300",
-    "event": "push",
-    "created_at": "2026-07-20T16:20:21Z",
-    "html_url": "https://github.com/NightVibes33/app-code-certificates/actions/runs/29759162581"
   }
 ]
