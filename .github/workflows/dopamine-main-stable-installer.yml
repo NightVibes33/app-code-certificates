@@ -1,4 +1,4 @@
-name: Dopamine main Cloudflare installer
+name: Dopamine profile registration OTA installer
 
 on:
   workflow_dispatch:
@@ -12,6 +12,7 @@ on:
       - ".github/workflows/dopamine-main-stable-installer.yml"
       - "dopamine/**"
       - "tools/build_dopamine_site.py"
+      - "tools/dopamine_registration_server.py"
 
 permissions:
   actions: read
@@ -57,14 +58,12 @@ jobs:
           BUILD_NEEDED=false
           SERVE_NEEDED=false
 
-          if [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
+          if [[ "$EVENT_NAME" == "workflow_dispatch" || "$EVENT_NAME" == "push" ]]; then
             BUILD_NEEDED=true
           elif [[ -z "$PUBLISHED_SHA" || "$SOURCE_SHA" != "$PUBLISHED_SHA" ]]; then
             BUILD_NEEDED=true
           elif [[ -z "$ARTIFACT_RUN_ID" ]]; then
             BUILD_NEEDED=true
-          elif [[ "$EVENT_NAME" == "push" ]]; then
-            SERVE_NEEDED=true
           elif [[ "$EVENT_SCHEDULE" == "7 */4 * * *" ]]; then
             SERVE_NEEDED=true
           fi
@@ -77,7 +76,6 @@ jobs:
           echo "serve_needed=$SERVE_NEEDED" >> "$GITHUB_OUTPUT"
           echo "source_sha=$SOURCE_SHA" >> "$GITHUB_OUTPUT"
           echo "artifact_run_id=$ARTIFACT_RUN_ID" >> "$GITHUB_OUTPUT"
-          echo "source=${SOURCE_SHA:0:12} published=${PUBLISHED_SHA:-none} artifact_run=${ARTIFACT_RUN_ID:-none} build=$BUILD_NEEDED serve=$SERVE_NEEDED"
 
   build-sign:
     needs: check
@@ -188,26 +186,18 @@ jobs:
         run: |
           set -euxo pipefail
           mkdir -p output signing-work
-
           python3 - <<'PY'
           import base64
           from pathlib import Path
-
           def clean(value: str) -> str:
               value = ''.join(value.split())
               return value + ('=' * (-len(value) % 4))
-
           Path('signing-work/development.p12').write_bytes(
               base64.b64decode(clean(Path('dopamine/Dopamine-Development.p12.b64').read_text()), validate=True)
           )
           parts = sorted(Path('dopamine/profile.parts').glob('*'))
-          if parts:
-              profile_b64 = ''.join(''.join(part.read_text().split()) for part in parts)
-          else:
-              profile_b64 = Path('dopamine/Dopamine-iPad5.mobileprovision.b64').read_text()
-          Path('signing-work/profile.mobileprovision').write_bytes(
-              base64.b64decode(clean(profile_b64), validate=True)
-          )
+          profile_b64 = ''.join(''.join(part.read_text().split()) for part in parts) if parts else Path('dopamine/Dopamine-iPad5.mobileprovision.b64').read_text()
+          Path('signing-work/profile.mobileprovision').write_bytes(base64.b64decode(clean(profile_b64), validate=True))
           PY
 
           security cms -D -i signing-work/profile.mobileprovision > signing-work/profile.plist
@@ -217,58 +207,39 @@ jobs:
           profile = plistlib.loads(Path('signing-work/profile.plist').read_bytes())
           entitlements = profile['Entitlements']
           bundle_id = entitlements['application-identifier'].split('.', 1)[1]
-          Path('signing-work/entitlements.plist').write_bytes(
-              plistlib.dumps(entitlements, fmt=plistlib.FMT_XML, sort_keys=False)
-          )
+          Path('signing-work/entitlements.plist').write_bytes(plistlib.dumps(entitlements, fmt=plistlib.FMT_XML, sort_keys=False))
           Path('signing-work/bundle-id.txt').write_text(bundle_id)
-          Path('signing-work/profile-data.json').write_text(json.dumps({'bundle_id': bundle_id}))
           PY
 
           BUNDLE_ID="$(cat signing-work/bundle-id.txt)"
-          export BUNDLE_ID
           KEYCHAIN="$RUNNER_TEMP/dopamine-main-signing.keychain-db"
           KEYCHAIN_PASSWORD="$(python3 -c 'import secrets; print(secrets.token_urlsafe(24))')"
-          EXISTING_KEYCHAINS="$(security list-keychains -d user | tr -d '"' | tr '\n' ' ')"
           security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
           security set-keychain-settings -lut 7200 "$KEYCHAIN"
           security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
           security import signing-work/development.p12 -k "$KEYCHAIN" -P "$P12_PASSWORD" -T /usr/bin/codesign
           security set-key-partition-list -S apple-tool:,apple: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
-          security list-keychains -d user -s "$KEYCHAIN" $EXISTING_KEYCHAINS
-          security default-keychain -d user -s "$KEYCHAIN"
+          security list-keychains -d user -s "$KEYCHAIN"
           IDENTITY="$(security find-identity -v -p codesigning "$KEYCHAIN" | awk '/^[[:space:]]*[0-9]+\)/ {print $2; exit}')"
           test -n "$IDENTITY"
 
-          rm -rf signing-work/unpacked
           mkdir -p signing-work/unpacked
           unzip -q source/Application/Dopamine.ipa -d signing-work/unpacked
           APP="$(find signing-work/unpacked/Payload -maxdepth 1 -type d -name '*.app' -print -quit)"
-          test -n "$APP"
-
           BUILD_NUMBER="$(date -u +%Y%m%d%H%M%S)"
           /usr/libexec/PlistBuddy -c "Set :CFBundleIdentifier $BUNDLE_ID" "$APP/Info.plist"
           /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $BUILD_NUMBER" "$APP/Info.plist"
           VERSION="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$APP/Info.plist")"
           cp signing-work/profile.mobileprovision "$APP/embedded.mobileprovision"
           find "$APP" -type d -name _CodeSignature -prune -exec rm -rf '{}' +
-
           if [[ -d "$APP/Frameworks" ]]; then
-            while IFS= read -r -d '' framework; do
-              codesign --force --sign "$IDENTITY" --keychain "$KEYCHAIN" --timestamp=none "$framework"
-            done < <(find "$APP/Frameworks" -depth -type d -name '*.framework' -print0)
+            while IFS= read -r -d '' framework; do codesign --force --sign "$IDENTITY" --keychain "$KEYCHAIN" --timestamp=none "$framework"; done < <(find "$APP/Frameworks" -depth -type d -name '*.framework' -print0)
           fi
-          while IFS= read -r -d '' dylib; do
-            codesign --force --sign "$IDENTITY" --keychain "$KEYCHAIN" --timestamp=none "$dylib"
-          done < <(find "$APP" -type f -name '*.dylib' -print0)
-          while IFS= read -r -d '' extension; do
-            codesign --force --sign "$IDENTITY" --keychain "$KEYCHAIN" --timestamp=none "$extension"
-          done < <(find "$APP" -depth -type d -name '*.appex' -print0)
-
-          codesign --force --sign "$IDENTITY" --keychain "$KEYCHAIN" --timestamp=none \
-            --entitlements signing-work/entitlements.plist --generate-entitlement-der "$APP"
+          while IFS= read -r -d '' dylib; do codesign --force --sign "$IDENTITY" --keychain "$KEYCHAIN" --timestamp=none "$dylib"; done < <(find "$APP" -type f -name '*.dylib' -print0)
+          while IFS= read -r -d '' extension; do codesign --force --sign "$IDENTITY" --keychain "$KEYCHAIN" --timestamp=none "$extension"; done < <(find "$APP" -depth -type d -name '*.appex' -print0)
+          codesign --force --sign "$IDENTITY" --keychain "$KEYCHAIN" --timestamp=none --entitlements signing-work/entitlements.plist --generate-entitlement-der "$APP"
           codesign --verify --deep --strict --verbose=2 "$APP"
           (cd signing-work/unpacked && zip -qry "$GITHUB_WORKSPACE/output/Dopamine-iPad5-newest-signed.ipa" Payload)
-          test -s output/Dopamine-iPad5-newest-signed.ipa
 
           python3 - <<PY
           import json
@@ -296,13 +267,13 @@ jobs:
       - check
       - build-sign
     if: always() && needs.check.outputs.serve_needed == 'true' && (needs.build-sign.result == 'success' || needs.build-sign.result == 'skipped')
-    runs-on: ubuntu-latest
+    runs-on: macos-latest
     timeout-minutes: 270
     concurrency:
       group: dopamine-main-cloudflare-live
       cancel-in-progress: true
     steps:
-      - name: Checkout installer generator
+      - name: Checkout registration server
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
@@ -324,20 +295,68 @@ jobs:
           repository: ${{ github.repository }}
           run-id: ${{ needs.check.outputs.artifact_run_id }}
 
-      - name: Start newest Cloudflare complete installer
-        id: tunnel
+      - name: Prepare automatic registration signing server
+        env:
+          P12_PASSWORD: "1"
         shell: bash
         run: |
           set -euxo pipefail
-          test -s output/Dopamine-iPad5-newest-signed.ipa
-          test -s output/metadata.json
-          rm -rf site
-          mkdir -p site/complete
+          python3 -m pip install --user PyJWT cryptography
+          mkdir -p registration-signing site/complete
+          cp output/Dopamine-iPad5-newest-signed.ipa registration-signing/base.ipa
+          python3 - <<'PY'
+          import base64
+          from pathlib import Path
+          value = ''.join(Path('dopamine/Dopamine-Development.p12.b64').read_text().split())
+          value += '=' * (-len(value) % 4)
+          Path('registration-signing/development.p12').write_bytes(base64.b64decode(value))
+          PY
+          KEYCHAIN="$RUNNER_TEMP/dopamine-registration.keychain-db"
+          KEYCHAIN_PASSWORD="$(python3 -c 'import secrets; print(secrets.token_urlsafe(24))')"
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          security set-keychain-settings -lut 18000 "$KEYCHAIN"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          security import registration-signing/development.p12 -k "$KEYCHAIN" -P "$P12_PASSWORD" -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          security list-keychains -d user -s "$KEYCHAIN"
+          IDENTITY="$(security find-identity -v -p codesigning "$KEYCHAIN" | awk '/^[[:space:]]*[0-9]+\)/ {print $2; exit}')"
+          test -n "$IDENTITY"
+          echo "REGISTRATION_KEYCHAIN=$KEYCHAIN" >> "$GITHUB_ENV"
+          echo "REGISTRATION_IDENTITY=$IDENTITY" >> "$GITHUB_ENV"
 
-          RUNNER_TRACKING_ID="" nohup python3 -m http.server 8080 --directory site > http-server.log 2>&1 &
+      - name: Start Cloudflare profile registration and OTA installer
+        id: tunnel
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_PRIVATE_KEY: ${{ secrets.ASC_PRIVATE_KEY }}
+        shell: bash
+        run: |
+          set -euxo pipefail
+          test -n "$ASC_KEY_ID"
+          test -n "$ASC_ISSUER_ID"
+          test -n "$ASC_PRIVATE_KEY"
+          BUNDLE_ID="$(jq -r .bundle_id output/metadata.json)"
+          VERSION="$(jq -r .version output/metadata.json)"
+          TITLE="$(jq -r .title output/metadata.json)"
+
+          RUNNER_TRACKING_ID="" nohup python3 tools/dopamine_registration_server.py \
+            --site site/complete \
+            --base-ipa registration-signing/base.ipa \
+            --bundle-id "$BUNDLE_ID" \
+            --version "$VERSION" \
+            --title "$TITLE" \
+            --identity "$REGISTRATION_IDENTITY" \
+            --keychain "$REGISTRATION_KEYCHAIN" \
+            --repo-root "$GITHUB_WORKSPACE" \
+            --base-url-file "$GITHUB_WORKSPACE/cloudflare-base-url.txt" \
+            > registration-server.log 2>&1 &
           echo "$!" > server.pid
 
-          curl -fsSL https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64 -o cloudflared
+          ARCH="$(uname -m)"
+          if [[ "$ARCH" == "arm64" ]]; then CF_ARCH=arm64; else CF_ARCH=amd64; fi
+          curl -fsSL "https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-darwin-${CF_ARCH}.tgz" -o cloudflared.tgz
+          tar -xzf cloudflared.tgz
           chmod +x cloudflared
           RUNNER_TRACKING_ID="" nohup ./cloudflared tunnel --url http://127.0.0.1:8080 --no-autoupdate > cloudflared.log 2>&1 &
           echo "$!" > tunnel.pid
@@ -348,17 +367,14 @@ jobs:
             [[ -n "$URL" ]] && break
             sleep 2
           done
-          if [[ -z "$URL" ]]; then
-            cat cloudflared.log
-            exit 1
-          fi
+          test -n "$URL"
+          printf '%s\n' "$URL" > cloudflare-base-url.txt
 
           RESULT="$(python3 tools/build_dopamine_site.py \
             --site site/complete \
             --ipa output/Dopamine-iPad5-newest-signed.ipa \
             --metadata output/metadata.json \
             --base-url "$URL/complete")"
-
           INSTALLER_URL="$URL/complete/"
           IPA_URL="$(jq -r .ipa_url <<<"$RESULT")"
           REGISTRATION_URL="$(jq -r .registration_url <<<"$RESULT")"
@@ -368,49 +384,37 @@ jobs:
           printf '%s\n' "$REGISTRATION_URL" > cloudflare-registration-url.txt
           printf '%s\n' "$SOURCE_SHA" > cloudflare-source-sha.txt
           echo "installer_url=$INSTALLER_URL" >> "$GITHUB_OUTPUT"
-          echo "ipa_url=$IPA_URL" >> "$GITHUB_OUTPUT"
-          echo "::notice title=Newest Dopamine Cloudflare installer::$INSTALLER_URL"
+          echo "::notice title=Dopamine profile registration installer::$INSTALLER_URL"
 
-      - name: Record exact current Cloudflare links
+      - name: Record current Cloudflare links
         env:
           GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
           set -euxo pipefail
-
           update_file() {
-            local path="$1"
-            local content sha
+            local path="$1" content sha
             content="$(base64 < "$path" | tr -d '\n')"
             for attempt in 1 2 3 4 5; do
               sha="$(gh api "repos/${GITHUB_REPOSITORY}/contents/${path}?ref=main" --jq .sha 2>/dev/null || true)"
               if [[ -n "$sha" ]]; then
-                if gh api --method PUT "repos/${GITHUB_REPOSITORY}/contents/${path}" \
-                  -f message="Update current Dopamine Cloudflare installer" \
-                  -f content="$content" -f branch=main -f sha="$sha" >/dev/null; then
-                  return 0
-                fi
+                gh api --method PUT "repos/${GITHUB_REPOSITORY}/contents/${path}" -f message="Update current Dopamine registration installer" -f content="$content" -f branch=main -f sha="$sha" >/dev/null && return 0
               else
-                if gh api --method PUT "repos/${GITHUB_REPOSITORY}/contents/${path}" \
-                  -f message="Record current Dopamine Cloudflare installer" \
-                  -f content="$content" -f branch=main >/dev/null; then
-                  return 0
-                fi
+                gh api --method PUT "repos/${GITHUB_REPOSITORY}/contents/${path}" -f message="Record current Dopamine registration installer" -f content="$content" -f branch=main >/dev/null && return 0
               fi
               sleep $((attempt * 2))
             done
             return 1
           }
-
           update_file cloudflare-installer-url.txt
           update_file cloudflare-ipa-url.txt
           update_file cloudflare-registration-url.txt
           update_file cloudflare-source-sha.txt
 
-      - name: Upload Cloudflare installer links
+      - name: Upload installer links
         uses: actions/upload-artifact@v4
         with:
-          name: Dopamine-main-Cloudflare-installer-links
+          name: Dopamine-profile-registration-installer-links
           path: |
             cloudflare-installer-url.txt
             cloudflare-ipa-url.txt
@@ -418,7 +422,7 @@ jobs:
             cloudflare-source-sha.txt
           retention-days: 2
 
-      - name: Keep newest installer online
+      - name: Keep registration installer online
         shell: bash
         run: |
           set -euxo pipefail
@@ -426,7 +430,7 @@ jobs:
           TUNNEL_PID="$(cat tunnel.pid)"
           for _ in $(seq 1 530); do
             if ! kill -0 "$SERVER_PID" 2>/dev/null || ! kill -0 "$TUNNEL_PID" 2>/dev/null; then
-              cat http-server.log || true
+              cat registration-server.log || true
               cat cloudflared.log || true
               exit 1
             fi
