@@ -46,6 +46,7 @@ body {{ margin: 0; min-height: 100vh; display: grid; place-items: center; paddin
 main {{ width: min(100%,500px); border: 1px solid rgba(255,255,255,.12); border-radius: 28px; padding: 28px; background: rgba(12,15,22,.9); box-shadow: 0 30px 90px rgba(0,0,0,.5); }}
 h1 {{ margin: 0 0 10px; font-size: clamp(32px,8vw,44px); letter-spacing: -.045em; }}
 p {{ margin: 0 0 24px; color: #aeb6c8; line-height: 1.5; }}
+.status {{ display: inline-block; margin-bottom: 18px; padding: 7px 10px; border-radius: 999px; color: #bfffd2; background: rgba(100,255,155,.1); border: 1px solid rgba(100,255,155,.25); font-size: 13px; font-weight: 800; }}
 .actions {{ display: grid; gap: 13px; }}
 a {{ display: block; padding: 17px 19px; border-radius: 15px; text-align: center; text-decoration: none; font-size: 17px; font-weight: 900; }}
 .profile {{ color: #f3f6ff; border: 1px solid rgba(255,255,255,.2); background: rgba(255,255,255,.07); }}
@@ -55,10 +56,11 @@ a {{ display: block; padding: 17px 19px; border-radius: 15px; text-align: center
 <body>
 <main>
 <h1>{html.escape(title)}</h1>
-<p>Install the registration profile first. When registration finishes, return here and install the latest signed IPA over the air.</p>
+<div class="status">iPad 5 DarkSword stability build</div>
+<p>This build includes the CPU-watchdog wait fixes, bounded retries, and IOSurface cleanup. Install the registration profile first, then return here and install the latest signed IPA.</p>
 <div class="actions">
 <a class="profile" href="{html.escape(profile_url, quote=True)}">Install Registration Profile</a>
-<a class="install" href="{html.escape(install_url, quote=True)}">Install Latest Signed IPA</a>
+<a class="install" href="{html.escape(install_url, quote=True)}">Install Latest Stability IPA</a>
 </div>
 </main>
 </body>
