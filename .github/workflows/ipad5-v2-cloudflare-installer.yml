@@ -11,6 +11,9 @@ permissions:
   actions: read
   contents: write
 
+env:
+  SOURCE_SHA: fa0776152e9352782c80bf9ee2f7e11809a759db
+
 jobs:
   sign-and-serve:
     runs-on: macos-latest
@@ -34,7 +37,6 @@ jobs:
         shell: bash
         env:
           P12_PASSWORD: "1"
-          SOURCE_SHA: fa0776152e9352782c80bf9ee2f7e11809a759db
         run: |
           set -euxo pipefail
           mkdir -p output signing-work
