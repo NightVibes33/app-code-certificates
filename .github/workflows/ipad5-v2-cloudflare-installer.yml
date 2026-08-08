@@ -134,15 +134,29 @@ jobs:
         run: |
           set -euxo pipefail
           mkdir -p site/complete
-          RUNNER_TRACKING_ID="" nohup python3 -m http.server 8080 --directory site > http-server.log 2>&1 &
+
+          # Seed the origin so it can be health-checked before Cloudflare is started.
+          printf '<!doctype html><meta charset="utf-8"><title>Preparing Dopamine OTA</title><p>Preparing installer…</p>\n' > site/complete/index.html
+
+          RUNNER_TRACKING_ID="" nohup python3 -m http.server 8080 --bind 0.0.0.0 --directory "$GITHUB_WORKSPACE/site" > "$GITHUB_WORKSPACE/http-server.log" 2>&1 &
           echo "$!" > server.pid
+
+          # Do not publish a tunnel unless the local origin is genuinely reachable.
+          for _ in $(seq 1 30); do
+            if curl --fail --silent --show-error --max-time 2 http://127.0.0.1:8080/complete/ >/dev/null; then
+              break
+            fi
+            sleep 1
+          done
+          curl --fail --silent --show-error --max-time 3 http://127.0.0.1:8080/complete/ >/dev/null
+          kill -0 "$(cat server.pid)"
 
           ARCH="$(uname -m)"
           if [[ "$ARCH" == "arm64" ]]; then CF_ARCH=arm64; else CF_ARCH=amd64; fi
           curl -fsSL "https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-darwin-${CF_ARCH}.tgz" -o cloudflared.tgz
           tar -xzf cloudflared.tgz
           chmod +x cloudflared
-          RUNNER_TRACKING_ID="" nohup ./cloudflared tunnel --url http://127.0.0.1:8080 --no-autoupdate > cloudflared.log 2>&1 &
+          RUNNER_TRACKING_ID="" nohup ./cloudflared tunnel --url http://127.0.0.1:8080 --no-autoupdate > "$GITHUB_WORKSPACE/cloudflared.log" 2>&1 &
           echo "$!" > tunnel.pid
 
           URL=""
@@ -152,12 +166,29 @@ jobs:
             sleep 2
           done
           test -n "$URL"
+          kill -0 "$(cat tunnel.pid)"
 
           RESULT="$(python3 tools/build_dopamine_site.py --site site/complete \
             --ipa output/Dopamine-iPad5-16.7.11-v2-signed.ipa \
             --metadata output/metadata.json --base-url "$URL/complete")"
+
+          # Re-check the exact OTA page locally after generating the final site.
+          curl --fail --silent --show-error --max-time 3 http://127.0.0.1:8080/complete/ >/dev/null
+
           INSTALLER_URL="$URL/complete/"
           IPA_URL="$(python3 -c 'import json,sys; print(json.load(sys.stdin)["ipa_url"])' <<<"$RESULT")"
+
+          # Verify Cloudflare can actually reach the origin before publishing the URL.
+          OK=""
+          for _ in $(seq 1 30); do
+            if curl --fail --silent --show-error --max-time 5 "$INSTALLER_URL" >/dev/null; then
+              OK=1
+              break
+            fi
+            sleep 2
+          done
+          test -n "$OK"
+
           printf '%s\n' "$INSTALLER_URL" > cloudflare-installer-url.txt
           printf '%s\n' "$IPA_URL" > cloudflare-ipa-url.txt
           printf '%s\n' "$SOURCE_SHA" > cloudflare-source-sha.txt
@@ -195,6 +226,7 @@ jobs:
           SERVER_PID="$(cat server.pid)"
           TUNNEL_PID="$(cat tunnel.pid)"
           while kill -0 "$SERVER_PID" 2>/dev/null && kill -0 "$TUNNEL_PID" 2>/dev/null; do
+            curl --fail --silent --show-error --max-time 5 http://127.0.0.1:8080/complete/ >/dev/null
             sleep 30
           done
           exit 1
