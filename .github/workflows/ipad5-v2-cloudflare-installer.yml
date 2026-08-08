@@ -33,7 +33,7 @@ jobs:
           repository: NightVibes33/Dopamine
           run-id: 31246332731
 
-      - name: Sign green IPA
+      - name: Sign green IPA with current iPad profile
         shell: bash
         env:
           P12_PASSWORD: "1"
@@ -53,12 +53,8 @@ jobs:
               base64.b64decode(clean(Path('dopamine/Dopamine-Development.p12.b64').read_text()), validate=True)
           )
           parts = sorted(Path('dopamine/profile.parts').glob('*'))
-          if not parts:
-              raise SystemExit('Provisioning profile chunks are missing')
-          profile_b64 = ''.join(''.join(part.read_text().split()) for part in parts)
-          Path('signing-work/profile.mobileprovision').write_bytes(
-              base64.b64decode(clean(profile_b64), validate=True)
-          )
+          profile_b64 = ''.join(''.join(part.read_text().split()) for part in parts) if parts else Path('dopamine/Dopamine-iPad5.mobileprovision.b64').read_text()
+          Path('signing-work/profile.mobileprovision').write_bytes(base64.b64decode(clean(profile_b64), validate=True))
           PY
 
           security cms -D -i signing-work/profile.mobileprovision > signing-work/profile.plist
@@ -68,14 +64,12 @@ jobs:
           profile = plistlib.loads(Path('signing-work/profile.plist').read_bytes())
           entitlements = profile['Entitlements']
           bundle_id = entitlements['application-identifier'].split('.', 1)[1]
-          Path('signing-work/entitlements.plist').write_bytes(
-              plistlib.dumps(entitlements, fmt=plistlib.FMT_XML, sort_keys=False)
-          )
+          Path('signing-work/entitlements.plist').write_bytes(plistlib.dumps(entitlements, fmt=plistlib.FMT_XML, sort_keys=False))
           Path('signing-work/bundle-id.txt').write_text(bundle_id)
           PY
 
           BUNDLE_ID="$(cat signing-work/bundle-id.txt)"
-          KEYCHAIN="$RUNNER_TEMP/dopamine-ipad5-v2.keychain-db"
+          KEYCHAIN="$RUNNER_TEMP/dopamine-ipad5-v2-sign.keychain-db"
           KEYCHAIN_PASSWORD="$(python3 -c 'import secrets; print(secrets.token_urlsafe(24))')"
           security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
           security set-keychain-settings -lut 7200 "$KEYCHAIN"
@@ -96,21 +90,12 @@ jobs:
           VERSION="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$APP/Info.plist")"
           cp signing-work/profile.mobileprovision "$APP/embedded.mobileprovision"
           find "$APP" -type d -name _CodeSignature -prune -exec rm -rf '{}' +
-
           if [[ -d "$APP/Frameworks" ]]; then
-            while IFS= read -r -d '' framework; do
-              codesign --force --sign "$IDENTITY" --keychain "$KEYCHAIN" --timestamp=none "$framework"
-            done < <(find "$APP/Frameworks" -depth -type d -name '*.framework' -print0)
+            while IFS= read -r -d '' framework; do codesign --force --sign "$IDENTITY" --keychain "$KEYCHAIN" --timestamp=none "$framework"; done < <(find "$APP/Frameworks" -depth -type d -name '*.framework' -print0)
           fi
-          while IFS= read -r -d '' dylib; do
-            codesign --force --sign "$IDENTITY" --keychain "$KEYCHAIN" --timestamp=none "$dylib"
-          done < <(find "$APP" -type f -name '*.dylib' -print0)
-          while IFS= read -r -d '' extension; do
-            codesign --force --sign "$IDENTITY" --keychain "$KEYCHAIN" --timestamp=none "$extension"
-          done < <(find "$APP" -depth -type d -name '*.appex' -print0)
-
-          codesign --force --sign "$IDENTITY" --keychain "$KEYCHAIN" --timestamp=none \
-            --entitlements signing-work/entitlements.plist --generate-entitlement-der "$APP"
+          while IFS= read -r -d '' dylib; do codesign --force --sign "$IDENTITY" --keychain "$KEYCHAIN" --timestamp=none "$dylib"; done < <(find "$APP" -type f -name '*.dylib' -print0)
+          while IFS= read -r -d '' extension; do codesign --force --sign "$IDENTITY" --keychain "$KEYCHAIN" --timestamp=none "$extension"; done < <(find "$APP" -depth -type d -name '*.appex' -print0)
+          codesign --force --sign "$IDENTITY" --keychain "$KEYCHAIN" --timestamp=none --entitlements signing-work/entitlements.plist --generate-entitlement-der "$APP"
           codesign --verify --deep --strict --verbose=2 "$APP"
           (cd signing-work/unpacked && zip -qry "$GITHUB_WORKSPACE/output/Dopamine-iPad5-16.7.11-v2-signed.ipa" Payload)
           test -s output/Dopamine-iPad5-16.7.11-v2-signed.ipa
@@ -128,35 +113,74 @@ jobs:
           PY
           security delete-keychain "$KEYCHAIN"
 
-      - name: Start Cloudflare OTA installer
+      - name: Prepare iPad registration signer
+        shell: bash
+        env:
+          P12_PASSWORD: "1"
+        run: |
+          set -euxo pipefail
+          python3 -m venv registration-venv
+          registration-venv/bin/python -m pip install --upgrade pip
+          registration-venv/bin/python -m pip install PyJWT cryptography
+          echo "REGISTRATION_PYTHON=$GITHUB_WORKSPACE/registration-venv/bin/python" >> "$GITHUB_ENV"
+          mkdir -p registration-signing site/complete
+          cp output/Dopamine-iPad5-16.7.11-v2-signed.ipa registration-signing/base.ipa
+          cp signing-work/development.p12 registration-signing/development.p12
+
+          KEYCHAIN="$RUNNER_TEMP/dopamine-ipad5-v2-registration.keychain-db"
+          KEYCHAIN_PASSWORD="$(python3 -c 'import secrets; print(secrets.token_urlsafe(24))')"
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          security set-keychain-settings -lut 18000 "$KEYCHAIN"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          security import registration-signing/development.p12 -k "$KEYCHAIN" -P "$P12_PASSWORD" -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          security list-keychains -d user -s "$KEYCHAIN"
+          IDENTITY="$(security find-identity -v -p codesigning "$KEYCHAIN" | awk '/^[[:space:]]*[0-9]+\)/ {print $2; exit}')"
+          test -n "$IDENTITY"
+          echo "REGISTRATION_KEYCHAIN=$KEYCHAIN" >> "$GITHUB_ENV"
+          echo "REGISTRATION_IDENTITY=$IDENTITY" >> "$GITHUB_ENV"
+
+      - name: Start iPad registration and Cloudflare OTA
         id: tunnel
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_PRIVATE_KEY: ${{ secrets.ASC_PRIVATE_KEY }}
         shell: bash
         run: |
           set -euxo pipefail
-          mkdir -p site/complete
+          test -n "$ASC_KEY_ID"
+          test -n "$ASC_ISSUER_ID"
+          test -n "$ASC_PRIVATE_KEY"
+          BUNDLE_ID="$(jq -r .bundle_id output/metadata.json)"
+          VERSION="$(jq -r .version output/metadata.json)"
+          TITLE="$(jq -r .title output/metadata.json)"
 
-          # Seed the origin so it can be health-checked before Cloudflare is started.
-          printf '<!doctype html><meta charset="utf-8"><title>Preparing Dopamine OTA</title><p>Preparing installer…</p>\n' > site/complete/index.html
-
-          RUNNER_TRACKING_ID="" nohup python3 -m http.server 8080 --bind 0.0.0.0 --directory "$GITHUB_WORKSPACE/site" > "$GITHUB_WORKSPACE/http-server.log" 2>&1 &
+          RUNNER_TRACKING_ID="" nohup "$REGISTRATION_PYTHON" tools/dopamine_registration_server.py \
+            --site site/complete \
+            --base-ipa registration-signing/base.ipa \
+            --bundle-id "$BUNDLE_ID" \
+            --version "$VERSION" \
+            --title "$TITLE" \
+            --identity "$REGISTRATION_IDENTITY" \
+            --keychain "$REGISTRATION_KEYCHAIN" \
+            --repo-root "$GITHUB_WORKSPACE" \
+            --base-url-file "$GITHUB_WORKSPACE/cloudflare-base-url.txt" \
+            --host 127.0.0.1 --port 8080 \
+            > registration-server.log 2>&1 &
           echo "$!" > server.pid
 
-          # Do not publish a tunnel unless the local origin is genuinely reachable.
           for _ in $(seq 1 30); do
-            if curl --fail --silent --show-error --max-time 2 http://127.0.0.1:8080/complete/ >/dev/null; then
-              break
-            fi
+            if curl -fsS http://127.0.0.1:8080/complete/ >/dev/null 2>&1; then break; fi
             sleep 1
           done
-          curl --fail --silent --show-error --max-time 3 http://127.0.0.1:8080/complete/ >/dev/null
-          kill -0 "$(cat server.pid)"
 
           ARCH="$(uname -m)"
           if [[ "$ARCH" == "arm64" ]]; then CF_ARCH=arm64; else CF_ARCH=amd64; fi
           curl -fsSL "https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-darwin-${CF_ARCH}.tgz" -o cloudflared.tgz
           tar -xzf cloudflared.tgz
           chmod +x cloudflared
-          RUNNER_TRACKING_ID="" nohup ./cloudflared tunnel --url http://127.0.0.1:8080 --no-autoupdate > "$GITHUB_WORKSPACE/cloudflared.log" 2>&1 &
+          RUNNER_TRACKING_ID="" nohup ./cloudflared tunnel --url http://127.0.0.1:8080 --no-autoupdate > cloudflared.log 2>&1 &
           echo "$!" > tunnel.pid
 
           URL=""
@@ -166,43 +190,42 @@ jobs:
             sleep 2
           done
           test -n "$URL"
-          kill -0 "$(cat tunnel.pid)"
+          printf '%s\n' "$URL" > cloudflare-base-url.txt
 
-          RESULT="$(python3 tools/build_dopamine_site.py --site site/complete \
+          RESULT="$(python3 tools/build_dopamine_site.py \
+            --site site/complete \
             --ipa output/Dopamine-iPad5-16.7.11-v2-signed.ipa \
-            --metadata output/metadata.json --base-url "$URL/complete")"
+            --metadata output/metadata.json \
+            --base-url "$URL/complete")"
 
-          # Re-check the exact OTA page locally after generating the final site.
-          curl --fail --silent --show-error --max-time 3 http://127.0.0.1:8080/complete/ >/dev/null
+          # Verify both the page and dynamic registration profile locally.
+          curl -fsS --retry 10 --retry-delay 1 http://127.0.0.1:8080/complete/ >/dev/null
+          curl -fsS --retry 10 --retry-delay 1 http://127.0.0.1:8080/complete/register.mobileconfig -o /tmp/register.mobileconfig
+          test -s /tmp/register.mobileconfig
+
+          # Verify both endpoints through Cloudflare before publishing.
+          curl -fsS --retry 20 --retry-all-errors --retry-delay 2 "$URL/complete/" >/dev/null
+          curl -fsS --retry 20 --retry-all-errors --retry-delay 2 "$URL/complete/register.mobileconfig" -o /tmp/public-register.mobileconfig
+          test -s /tmp/public-register.mobileconfig
 
           INSTALLER_URL="$URL/complete/"
-          IPA_URL="$(python3 -c 'import json,sys; print(json.load(sys.stdin)["ipa_url"])' <<<"$RESULT")"
-
-          # Verify Cloudflare can actually reach the origin before publishing the URL.
-          OK=""
-          for _ in $(seq 1 30); do
-            if curl --fail --silent --show-error --max-time 5 "$INSTALLER_URL" >/dev/null; then
-              OK=1
-              break
-            fi
-            sleep 2
-          done
-          test -n "$OK"
-
+          IPA_URL="$(jq -r .ipa_url <<<"$RESULT")"
+          REGISTRATION_URL="$URL/complete/register.mobileconfig"
           printf '%s\n' "$INSTALLER_URL" > cloudflare-installer-url.txt
           printf '%s\n' "$IPA_URL" > cloudflare-ipa-url.txt
+          printf '%s\n' "$REGISTRATION_URL" > cloudflare-registration-url.txt
           printf '%s\n' "$SOURCE_SHA" > cloudflare-source-sha.txt
           echo "installer_url=$INSTALLER_URL" >> "$GITHUB_OUTPUT"
-          echo "::notice title=Dopamine iPad5 v2 OTA::$INSTALLER_URL"
+          echo "::notice title=Dopamine iPad5 v2 registration OTA::$INSTALLER_URL"
 
-      - name: Publish live installer URL
+      - name: Publish verified live URLs
         shell: bash
         run: |
           set -euxo pipefail
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
-          git add cloudflare-installer-url.txt cloudflare-ipa-url.txt cloudflare-source-sha.txt
-          git commit -m 'Publish iPad5 v2 Cloudflare OTA URL' || true
+          git add cloudflare-installer-url.txt cloudflare-ipa-url.txt cloudflare-registration-url.txt cloudflare-source-sha.txt
+          git commit -m 'Publish verified iPad5 v2 registration OTA URLs' || true
           for attempt in 1 2 3 4 5; do
             git pull --rebase origin main
             if git push origin main; then exit 0; fi
@@ -210,23 +233,25 @@ jobs:
           done
           exit 1
 
-      - name: Upload URL artifact
+      - name: Upload verified URL artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Dopamine-iPad5-v2-Cloudflare-URL
+          name: Dopamine-iPad5-v2-registration-OTA-URL
           path: |
             cloudflare-installer-url.txt
+            cloudflare-registration-url.txt
             cloudflare-ipa-url.txt
           retention-days: 2
 
-      - name: Keep installer online
+      - name: Keep iPad registration installer online
         shell: bash
         run: |
           set -euxo pipefail
           SERVER_PID="$(cat server.pid)"
           TUNNEL_PID="$(cat tunnel.pid)"
           while kill -0 "$SERVER_PID" 2>/dev/null && kill -0 "$TUNNEL_PID" 2>/dev/null; do
-            curl --fail --silent --show-error --max-time 5 http://127.0.0.1:8080/complete/ >/dev/null
             sleep 30
           done
+          cat registration-server.log || true
+          cat cloudflared.log || true
           exit 1
