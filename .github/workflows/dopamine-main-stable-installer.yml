@@ -19,7 +19,7 @@ permissions:
 
 env:
   SOURCE_REPOSITORY: NightVibes33/Dopamine
-  SOURCE_BRANCH: main
+  SOURCE_BRANCH: ipad5-16.7.11-v2
 
 jobs:
   check:
